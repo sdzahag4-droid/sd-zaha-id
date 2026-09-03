@@ -5,6 +5,15 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+// ==== DATA LOGIN ====
+class LoginData {
+  static String nama = "";
+  static String username = "";
+  static String jabatan = "";
+  static String id = "";
+  static bool isAdmin = false;
+}
+
 // ✅ URL SUDAH BENAR
 const String scriptUrl = "https://script.google.com/macros/s/AKfycbzmwc8kVmf17HjXVn7MFf-85ZxPfZG8x0oc4aI2j64Ym6sphMp2vhnRfrIyoTHokYD5gg/exec";
 
@@ -28,7 +37,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// ==================== HALAMAN LOGIN (DIPERBAIKI) ====================
+// ==================== HALAMAN LOGIN ====================
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
   @override
@@ -40,7 +49,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
   bool isLoading = false;
 
-  // ✅ LOGIKA LOGIN BARU — KIRIM DATA KE SERVER, BUKAN UNDUH SEMUA DATA
   void handleLogin() async {
     if (usernameController.text.isEmpty || passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -52,7 +60,6 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => isLoading = true);
 
     try {
-      // ✅ KIRIM DATA LOGIN KE SERVER MENGGUNAKAN POST
       final response = await http.post(
         Uri.parse(scriptUrl),
         body: jsonEncode({
@@ -66,18 +73,22 @@ class _LoginScreenState extends State<LoginScreen> {
         final result = jsonDecode(response.body);
 
         if (result['status'] == 'success') {
-          // ✅ LOGIN BERHASIL
+          // ✅ SIMPAN DATA LOGIN
+          LoginData.nama = result['nama'] ?? "";
+          LoginData.username = result['username'] ?? "";
+          LoginData.jabatan = result['jabatan'] ?? "";
+          LoginData.id = result['id'] ?? "";
+          LoginData.isAdmin = LoginData.username.toLowerCase() == "admin";
+
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('✅ Selamat datang, ${result['nama']}!')),
+            SnackBar(content: Text('✅ Selamat datang, ${LoginData.nama}!')),
           );
 
-          // Pindah ke Halaman Utama
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const HomeScreen()),
           );
         } else {
-          // ❌ LOGIN GAGAL
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('⚠️ ${result['message']}')),
           );
@@ -159,19 +170,27 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-// ==================== HALAMAN UTAMA (HOME) ====================
+// ==================== HALAMAN UTAMA ====================
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SD ZAHA.ID - Portal Sekolah', style: TextStyle(color: Colors.white)),
+        // ✅ JUDUL SUDAH DIHAPUS BAGIAN "Portal Sekolah"
+        title: const Text('SD ZAHA.ID', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.green[700],
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () {
+              // ✅ KOSONGKAN DATA SAAT LOGOUT
+              LoginData.nama = "";
+              LoginData.username = "";
+              LoginData.jabatan = "";
+              LoginData.id = "";
+              LoginData.isAdmin = false;
+
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -186,15 +205,64 @@ class HomeScreen extends StatelessWidget {
         crossAxisSpacing: 16.0,
         mainAxisSpacing: 16.0,
         children: [
-          MenuCard(title: 'Absensi Guru', icon: Icons.how_to_reg, color: Colors.blue, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AbsenScreen()))),
-          MenuCard(title: 'Rekap Absen', icon: Icons.assessment, color: Colors.brown, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'RekapAbsen', title: 'Rekap Absen')))),
-          MenuCard(title: 'Jadwal Sekolah', icon: Icons.schedule, color: Colors.orange, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Jadwal', title: 'Jadwal Sekolah')))),
-          MenuCard(title: 'Sarana Prasarana', icon: Icons.inventory, color: Colors.purple, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Sarana', title: 'Sarana Sekolah')))),
-          MenuCard(title: 'Agenda Sekolah', icon: Icons.event, color: Colors.red, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Agenda', title: 'Agenda Sekolah')))),
-          MenuCard(title: 'Profil Guru & Karyawan', icon: Icons.people, color: Colors.teal, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'GuruKaryawan', title: 'Profil Guru & Karyawan')))),
-          MenuCard(title: 'Chat Admin', icon: Icons.chat, color: Colors.green, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatAdminScreen()))),
-          MenuCard(title: 'Sosial Media', icon: Icons.share, color: Colors.indigo, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SosmedScreen()))),
-          MenuCard(title: 'Informasi Penting', icon: Icons.info, color: Colors.amber, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Informasi', title: 'Informasi Penting')))),
+          MenuCard(
+            title: 'Absensi Guru',
+            icon: Icons.how_to_reg,
+            color: Colors.blue,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AbsenScreen())),
+          ),
+
+          // ✅ REKAP ABSEN — HANYA MUNCUL JIKA ADMIN
+          if (LoginData.isAdmin)
+            MenuCard(
+              title: 'Rekap Absen',
+              icon: Icons.assessment,
+              color: Colors.brown,
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'RekapAbsen', title: 'Rekap Absen'))),
+            ),
+
+          MenuCard(
+            title: 'Jadwal Sekolah',
+            icon: Icons.schedule,
+            color: Colors.orange,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Jadwal', title: 'Jadwal Sekolah'))),
+          ),
+          MenuCard(
+            title: 'Sarana Prasarana',
+            icon: Icons.inventory,
+            color: Colors.purple,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Sarana', title: 'Sarana Sekolah'))),
+          ),
+          MenuCard(
+            title: 'Agenda Sekolah',
+            icon: Icons.event,
+            color: Colors.red,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Agenda', title: 'Agenda Sekolah'))),
+          ),
+          MenuCard(
+            title: 'Profil Guru & Karyawan',
+            icon: Icons.people,
+            color: Colors.teal,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'GuruKaryawan', title: 'Profil Guru & Karyawan'))),
+          ),
+          MenuCard(
+            title: 'Chat Admin',
+            icon: Icons.chat,
+            color: Colors.green,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatAdminScreen())),
+          ),
+          MenuCard(
+            title: 'Sosial Media',
+            icon: Icons.share,
+            color: Colors.indigo,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SosmedScreen())),
+          ),
+          MenuCard(
+            title: 'Informasi Penting',
+            icon: Icons.info,
+            color: Colors.amber,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Informasi', title: 'Informasi Penting'))),
+          ),
         ],
       ),
     );
@@ -206,7 +274,15 @@ class MenuCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  const MenuCard({super.key, required this.title, required this.icon, required this.color, required this.onTap});
+
+  const MenuCard({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -370,11 +446,13 @@ class _AbsenScreenState extends State<AbsenScreen> {
   }
 }
 
-// ==================== HALAMAN DATA (Tetap dipakai untuk menu lain) ====================
+// ==================== HALAMAN DATA ====================
 class DataViewScreen extends StatefulWidget {
   final String sheetName;
   final String title;
+
   const DataViewScreen({super.key, required this.sheetName, required this.title});
+
   @override
   State<DataViewScreen> createState() => _DataViewScreenState();
 }
@@ -386,6 +464,18 @@ class _DataViewScreenState extends State<DataViewScreen> {
   @override
   void initState() {
     super.initState();
+
+    // ✅ LAPISAN KEAMANAN: HANYA ADMIN YANG BUKA REKAP ABSEN
+    if (widget.sheetName == "RekapAbsen" && !LoginData.isAdmin) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('⚠️ Hanya Admin yang dapat mengakses Rekap Absen!')),
+        );
+        Navigator.pop(context);
+      });
+      return;
+    }
+
     fetchData();
   }
 

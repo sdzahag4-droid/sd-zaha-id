@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+// Ganti dengan URL Web App Google Apps Script Anda
+const String scriptUrl = "https://script.google.com/macros/s/AKfycbzmwc8kVmf17HjXVn7MFf-85ZxPfZG8x0oc4aI2j64Ym6sphMp2vhnRfrIyoTHokYD5gg/exec";
 
 void main() {
   runApp(const MyApp());
@@ -13,266 +19,71 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SD ZAHA.ID',
-      theme: ThemeData(primarySwatch: Colors.green),
-      home: const PortalScreen(),
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+        useMaterial3: true,
+      ),
+      home: const LoginScreen(), // Memulai aplikasi dari halaman Login
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
-// 1. Portal Utama Sekolah
-class PortalScreen extends StatelessWidget {
-  const PortalScreen({super.key});
+// ==================== HALAMAN LOGIN ====================
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('SD Zainul Hasan Genggong')),
-      body: Center(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildMenuCard(
-              context,
-              'Absensi Guru',
-              Icons.how_to_reg,
-              const LoginGuruScreen(),
-            ),
-            const SizedBox(width: 20),
-            _buildMenuCard(
-              context,
-              'Rekap Absen',
-              Icons.bar_chart,
-              const PlaceholderScreen(title: 'Rekap Absen'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMenuCard(BuildContext context, String title, IconData icon, Widget targetScreen) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => targetScreen));
-      },
-      child: Container(
-        width: 300,
-        height: 300,
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 64, color: Colors.blueGrey),
-            const SizedBox(height: 16),
-            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ),
-    );
-  }
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-// 2. Halaman Login Guru (Mengambil data dari Sheet GuruKaryawan)
-class LoginGuruScreen extends StatefulWidget {
-  const LoginGuruScreen({super.key});
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController idController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  bool isLoading = false;
 
-  @override
-  State<LoginGuruScreen> createState() => _LoginGuruScreenState();
-}
-
-class _LoginGuruScreenState extends State<LoginGuruScreen> {
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isLoading = false;
-
-  // Ganti dengan URL Web App Apps Script Anda yang aktif
-  final String webAppUrl = "MASUKKAN_URL_WEB_APP_APPS_SCRIPT_ANDA_DISINI";
-
-  void _login() async {
-    String username = _usernameController.text.trim();
-    String password = _passwordController.text.trim();
-
-    if (username.isEmpty || password.isEmpty) {
+  void handleLogin() async {
+    if (idController.text.isEmpty || passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Username dan Password harus diisi!')),
+        const SnackBar(content: Text('ID dan Password wajib diisi!')),
       );
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() => isLoading = true);
 
     try {
-      // Mengambil data dari sheet GuruKaryawan menggunakan doGet getData
-      final response = await http.get(Uri.parse('$webAppUrl?action=getData&sheet=GuruKaryawan'));
-      
+      // Mengambil data dari sheet GuruKaryawan untuk validasi
+      final response = await http.get(Uri.parse("$scriptUrl?action=getData&sheet=GuruKaryawan"));
       if (response.statusCode == 200) {
-        List<dynamic> data = jsonDecode(response.body);
+        List dataList = jsonDecode(response.body);
         
-        // Cari data guru berdasarkan Username & Password (Kolom G dan H)
-        var guru = data.firstWhere(
-          (item) => item['Username'].toString().toLowerCase() == username.toLowerCase() &&
-                    item['Password'].toString() == password,
-          orElse: () => null,
-        );
+        // Cek apakah ID dan Password cocok dengan data di database (Google Sheets)
+        // Sesuaikan nama kolom key ("ID", "Password", dll) dengan header sheet Anda
+        bool isValid = dataList.any((item) {
+          String dbId = item['ID']?.toString() ?? item.values.elementAt(0).toString();
+          String dbPass = item['Password']?.toString() ?? item.values.last.toString();
+          return dbId == idController.text && dbPass == passwordController.text;
+        });
 
-        setState(() => _isLoading = false);
+        setState(() => isLoading = false);
 
-        if (guru != null) {
-          String namaLengkap = guru['Nama Lengkap'] ?? 'Tanpa Nama';
+        if (isValid) {
+          // Jika valid, masuk ke HomeScreen
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(
-              builder: (context) => AbsenScreen(namaGuru: namaLengkap),
-            ),
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Username atau Password salah!')),
+            const SnackBar(content: Text('ID atau Password salah!')),
           );
         }
       } else {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal terhubung ke database server.')),
-        );
+        throw 'Gagal terhubung ke database';
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Terjadi kesalahan: $e')),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Login Absensi Guru')),
-      body: Center(
-        child: Container(
-          width: 400,
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [BoxShadow(color: Colors.grey.shade300, blurRadius: 10)],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Silakan Login', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _usernameController,
-                decoration: const InputDecoration(labelText: 'Username', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 45,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _login,
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('MASUK', style: TextStyle(fontSize: 16)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// 3. Menu Absensi Guru (Tanpa input Nama & Keterangan statis di atas)
-class AbsenScreen extends StatefulWidget {
-  final String namaGuru;
-  const AbsenScreen({super.key, required this.namaGuru});
-
-  @override
-  State<AbsenScreen> createState() => _AbsenScreenState();
-}
-
-class _AbsenScreenState extends State<AbsenScreen> {
-  final String webAppUrl = "MASUKKAN_URL_WEB_APP_APPS_SCRIPT_ANDA_DISINI";
-
-  void submitAbsen(String status, {bool needKeterangan = false}) async {
-    String keterangan = "-";
-
-    // Jika jenis absen memerlukan keterangan (Izin, Sakit, Cuti, Tidak Masuk), tampilkan dialog input
-    if (needKeterangan) {
-      TextEditingController ketController = TextEditingController();
-      bool? confirm = await showDialog<bool>(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text('Masukkan Keterangan untuk $status'),
-            content: TextField(
-              controller: ketController,
-              decoration: const InputDecoration(hintText: 'Tuliskan alasan/keterangan...'),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
-              ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Kirim')),
-            ],
-          );
-        },
-      );
-
-      if (confirm != true || ketController.text.trim().isEmpty) {
-        return; // Batalkan jika user batal atau keterangan kosong
-      }
-      keterangan = ketController.text.trim();
-    }
-
-    var body = {
-      "action": "absen",
-      "nama": widget.namaGuru,
-      "status": status,
-      "keterangan": keterangan,
-      "waktu": TimeOfDay.now().format(context),
-      "foto": "-",
-      "gps": "-"
-    };
-
-    try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
-
-      var response = await http.post(
-        Uri.parse(webAppUrl),
-        body: jsonEncode(body),
-        headers: {"Content-Type": "application/json"},
-      );
-
-      Navigator.pop(context); // Tutup loading
-
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Absen Berhasil: $status')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal mengirim data absen ke server.')),
-        );
-      }
-    } catch (e) {
-      Navigator.pop(context);
+      setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
@@ -282,53 +93,404 @@ class _AbsenScreenState extends State<AbsenScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Menu Absensi Guru (${widget.namaGuru})')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            Text("Selamat Datang, ${widget.namaGuru}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            _buildAbsenButton('Absen Masuk (05.45 - 07.30 WIB)', Icons.login, Colors.green, () => submitAbsen('Hadir - Masuk')),
-            _buildAbsenButton('Absen Izin (05.00 - 07.15 WIB)', Icons.assignment_outlined, Colors.orange, () => submitAbsen('Izin', needKeterangan: true)),
-            _buildAbsenButton('Absen Terlambat (07.00 - 08.00 WIB)', Icons.alarm, Colors.amber, () => submitAbsen('Terlambat', needKeterangan: true)),
-            _buildAbsenButton('Absen Sakit (Bebas Jam + Kamera Belakang)', Icons.sick, Colors.purple, () => submitAbsen('Sakit', needKeterangan: true)),
-            _buildAbsenButton('Absen Cuti (Bebas Jam + Kamera Belakang)', Icons.event_busy, Colors.blueGrey, () => submitAbsen('Cuti', needKeterangan: true)),
-            _buildAbsenButton('Absen Tidak Masuk (Wajib Isi Keterangan)', Icons.cancel, Colors.red, () => submitAbsen('Tidak Masuk', needKeterangan: true)),
-            _buildAbsenButton('Absen Pulang (10.00 - 14.00 WIB)', Icons.logout, Colors.teal, () => submitAbsen('Pulang')),
-          ],
-        ),
+      appBar: AppBar(
+        title: const Text('Login Guru & Karyawan', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.green[700],
       ),
-    );
-  }
-
-  Widget _buildAbsenButton(String title, IconData icon, Color color, VoidCallback onPressed) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.all(16),
-          alignment: Alignment.centerLeft,
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.school, size: 80, color: Colors.green),
+                const SizedBox(height: 16),
+                const Text(
+                  'SD Zainul Hasan Genggong',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                TextField(
+                  controller: idController,
+                  decoration: const InputDecoration(
+                    labelText: 'ID / NIP Guru',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[700],
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: isLoading ? null : handleLogin,
+                    child: isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text('LOGIN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        onPressed: onPressed,
-        icon: Icon(icon),
-        label: Text(title, style: const TextStyle(fontSize: 16)),
       ),
     );
   }
 }
 
-class PlaceholderScreen extends StatelessWidget {
-  final String title;
-  const PlaceholderScreen({super.key, required this.title});
+// ==================== HALAMAN UTAMA (HOME) ====================
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text('Halaman $title dalam pengembangan')),
+      appBar: AppBar(
+        title: const Text('SD ZAHA.ID - Portal Sekolah', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.green[700],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: () {
+              // Tombol keluar kembali ke LoginScreen
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              );
+            },
+          ),
+        ],
+      ),
+      body: GridView.count(
+        crossAxisCount: 2,
+        padding: const EdgeInsets.all(16.0),
+        crossAxisSpacing: 16.0,
+        mainAxisSpacing: 16.0,
+        children: [
+          MenuCard(title: 'Absensi Guru', icon: Icons.how_to_reg, color: Colors.blue, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AbsenScreen()))),
+          MenuCard(title: 'Rekap Absen', icon: Icons.assessment, color: Colors.brown, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'RekapAbsen', title: 'Rekap Absen')))),
+          MenuCard(title: 'Jadwal Sekolah', icon: Icons.schedule, color: Colors.orange, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Jadwal', title: 'Jadwal Sekolah')))),
+          MenuCard(title: 'Sarana Prasarana', icon: Icons.inventory, color: Colors.purple, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Sarana', title: 'Sarana Sekolah')))),
+          MenuCard(title: 'Agenda Sekolah', icon: Icons.event, color: Colors.red, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Agenda', title: 'Agenda Sekolah')))),
+          MenuCard(title: 'Profil Guru & Karyawan', icon: Icons.people, color: Colors.teal, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'GuruKaryawan', title: 'Profil Guru & Karyawan')))),
+          MenuCard(title: 'Chat Admin', icon: Icons.chat, color: Colors.green, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatAdminScreen()))),
+          MenuCard(title: 'Sosial Media', icon: Icons.share, color: Colors.indigo, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SosmedScreen()))),
+          MenuCard(title: 'Informasi Penting', icon: Icons.info, color: Colors.amber, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Informasi', title: 'Informasi Penting')))),
+        ],
+      ),
+    );
+  }
+}
+
+class MenuCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const MenuCard({super.key, required this.title, required this.icon, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 48, color: color),
+            const SizedBox(height: 12),
+            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AbsenScreen extends StatefulWidget {
+  const AbsenScreen({super.key});
+
+  @override
+  State<AbsenScreen> createState() => _AbsenScreenState();
+}
+
+class _AbsenScreenState extends State<AbsenScreen> {
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController ketController = TextEditingController();
+  bool isLoading = false;
+
+  void submitAbsen(String status, {bool needGps = false, bool needCamera = false, bool useBackCamera = false}) async {
+    if (nameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama Lengkap wajib diisi!')));
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      String gpsData = "-";
+      if (needGps) {
+        bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (!serviceEnabled) throw 'GPS tidak aktif. Mohon aktifkan GPS.';
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+          if (permission == LocationPermission.denied) throw 'Izin GPS ditolak.';
+        }
+        Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+        gpsData = "${position.latitude}, ${position.longitude}";
+      }
+
+      String fotoData = "-";
+      if (needCamera) {
+        final ImagePicker picker = ImagePicker();
+        final XFile? image = await picker.pickImage(
+          source: ImageSource.camera,
+          preferredCameraDevice: useBackCamera ? CameraDevice.rear : CameraDevice.front,
+        );
+        if (image != null) fotoData = image.path;
+      }
+
+      var body = {
+        "action": "absen",
+        "nama": nameController.text,
+        "status": status,
+        "keterangan": ketController.text,
+        "waktu": DateTime.now().toString(),
+        "gps": gpsData,
+        "foto": fotoData,
+      };
+
+      var response = await http.post(Uri.parse(scriptUrl), body: jsonEncode(body));
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Absen Berhasil Terkirim & Notifikasi Telegram Terkirim!')));
+        Navigator.pop(context);
+      } else {
+        throw 'Gagal terhubung ke Google Sheets';
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    TimeOfDay now = TimeOfDay.now();
+    int currentTimeMinutes = now.hour * 60 + now.minute;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Menu Absensi Guru')),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ListView(
+                children: [
+                  TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nama Lengkap', border: OutlineInputBorder())),
+                  const SizedBox(height: 12),
+                  TextField(controller: ketController, decoration: const InputDecoration(labelText: 'Keterangan / Alasan', border: OutlineInputBorder())),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    onPressed: (currentTimeMinutes >= 345 && currentTimeMinutes <= 450)
+                        ? () => submitAbsen('Absen Masuk', needGps: true, needCamera: true, useBackCamera: false)
+                        : null,
+                    icon: const Icon(Icons.login),
+                    label: const Text('Absen Masuk (05.45 - 07.30 WIB) [GPS + Selfie]'),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton.icon(
+                    onPressed: (currentTimeMinutes >= 300 && currentTimeMinutes <= 435)
+                        ? () => submitAbsen('Absen Izin')
+                        : null,
+                    icon: const Icon(Icons.assignment),
+                    label: const Text('Absen Izin (05.00 - 07.15 WIB)'),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton.icon(
+                    onPressed: (currentTimeMinutes >= 420 && currentTimeMinutes <= 480)
+                        ? () => submitAbsen('Absen Terlambat')
+                        : null,
+                    icon: const Icon(Icons.warning),
+                    label: const Text('Absen Terlambat (07.00 - 08.00 WIB)'),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton.icon(
+                    onPressed: () => submitAbsen('Absen Sakit', needCamera: true, useBackCamera: true),
+                    icon: const Icon(Icons.sick),
+                    label: const Text('Absen Sakit (Bebas Jam + Kamera Belakang)'),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton.icon(
+                    onPressed: () => submitAbsen('Absen Cuti', needCamera: true, useBackCamera: true),
+                    icon: const Icon(Icons.beach_access),
+                    label: const Text('Absen Cuti (Bebas Jam + Kamera Belakang)'),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton.icon(
+                    onPressed: () => submitAbsen('Absen Tidak Masuk'),
+                    icon: const Icon(Icons.cancel),
+                    label: const Text('Absen Tidak Masuk (Wajib Isi Keterangan)'),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton.icon(
+                    onPressed: (currentTimeMinutes >= 600 && currentTimeMinutes <= 840)
+                        ? () => submitAbsen('Absen Pulang', needGps: true, needCamera: true, useBackCamera: false)
+                        : null,
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Absen Pulang (10.00 - 14.00 WIB) [GPS + Selfie]'),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+}
+
+class DataViewScreen extends StatefulWidget {
+  final String sheetName;
+  final String title;
+  const DataViewScreen({super.key, required this.sheetName, required this.title});
+
+  @override
+  State<DataViewScreen> createState() => _DataViewScreenState();
+}
+
+class _DataViewScreenState extends State<DataViewScreen> {
+  List dataList = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchData();
+  }
+
+  void fetchData() async {
+    try {
+      final response = await http.get(Uri.parse("$scriptUrl?action=getData&sheet=${widget.sheetName}"));
+      if (response.statusCode == 200) {
+        setState(() {
+          dataList = jsonDecode(response.body);
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.title)),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : dataList.isEmpty
+              ? const Center(child: Text('Belum ada data di Google Sheets.'))
+              : ListView.builder(
+                  itemCount: dataList.length,
+                  itemBuilder: (context, index) {
+                    var item = dataList[index];
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      child: ListTile(
+                        title: Text(item.values.first.toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(item.toString()),
+                      ),
+                    );
+                  },
+                ),
+    );
+  }
+}
+
+class ChatAdminScreen extends StatelessWidget {
+  const ChatAdminScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Chat Admin Sekolah')),
+      body: ListView(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.chat, color: Colors.green, size: 36),
+            title: const Text('WhatsApp Admin SD ZAHA.ID'),
+            subtitle: const Text('Ketuk untuk diarahkan ke WhatsApp Admin'),
+            onTap: () => launchUrl(Uri.parse("https://wa.me/6281234567890"), mode: LaunchMode.externalApplication),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.telegram, color: Colors.blue, size: 36),
+            title: const Text('Telegram Admin SD ZAHA.ID'),
+            subtitle: const Text('Ketuk untuk diarahkan ke Telegram Admin'),
+            onTap: () => launchUrl(Uri.parse("https://t.me/username_admin"), mode: LaunchMode.externalApplication),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SosmedScreen extends StatelessWidget {
+  const SosmedScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Sosial Media Sekolah')),
+      body: ListView(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.camera_alt, color: Colors.purple),
+            title: const Text('Instagram Resmi SD ZAHA.ID'),
+            onTap: () => launchUrl(Uri.parse("https://instagram.com"), mode: LaunchMode.externalApplication),
+          ),
+          ListTile(
+            leading: const Icon(Icons.video_collection, color: Colors.black),
+            title: const Text('TikTok Resmi SD ZAHA.ID'),
+            onTap: () => launchUrl(Uri.parse("https://tiktok.com"), mode: LaunchMode.externalApplication),
+          ),
+          ListTile(
+            leading: const Icon(Icons.play_arrow, color: Colors.red),
+            title: const Text('Channel YouTube SD ZAHA.ID'),
+            onTap: () => launchUrl(Uri.parse("https://youtube.com"), mode: LaunchMode.externalApplication),
+          ),
+          ListTile(
+            leading: const Icon(Icons.message, color: Colors.green),
+            title: const Text('Channel WhatsApp SD ZAHA.ID'),
+            onTap: () => launchUrl(Uri.parse("https://whatsapp.com"), mode: LaunchMode.externalApplication),
+          ),
+          ListTile(
+            leading: const Icon(Icons.send, color: Colors.blue),
+            title: const Text('Channel Telegram SD ZAHA.ID'),
+            onTap: () => launchUrl(Uri.parse("https://t.me/channel_sekolah"), mode: LaunchMode.externalApplication),
+          ),
+        ],
+      ),
     );
   }
 }

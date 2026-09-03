@@ -1,9 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:math'; // ✅ Untuk fungsi hitung jarak
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+// ==== LOKASI SEKOLAH SD ZAHA.ID ====
+// Koordinat dari Google Maps
+const double sekolahLat = -7.787908;
+const double sekolahLng = 113.375106;
+
+// Batas jarak maksimal dari sekolah (dalam meter)
+const double radiusMeter = 100;
+
+// ==== FUNGSI HITUNG JARAK ====
+double hitungJarak(double latUser, double lngUser, double latSekolah, double lngSekolah) {
+  const double jariJariBumi = 6371000; // meter
+  double lat1 = latUser * pi / 180;
+  double lat2 = latSekolah * pi / 180;
+  double deltaLat = (latSekolah - latUser) * pi / 180;
+  double deltaLng = (lngSekolah - lngUser) * pi / 180;
+
+  double a = sin(deltaLat / 2) * sin(deltaLat / 2) +
+      cos(lat1) * cos(lat2) *
+      sin(deltaLng / 2) * sin(deltaLng / 2);
+  double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+  return jariJariBumi * c; // Hasil dalam meter
+}
 
 // ==== DATA LOGIN ====
 class LoginData {
@@ -303,7 +328,7 @@ class MenuCard extends StatelessWidget {
   }
 }
 
-// ==================== HALAMAN ABSENSI (DIPERBAIKI) ====================
+// ==================== HALAMAN ABSENSI (DENGAN CEK JARAK) ====================
 class AbsenScreen extends StatefulWidget {
   const AbsenScreen({super.key});
   @override
@@ -346,6 +371,19 @@ class _AbsenScreenState extends State<AbsenScreen> {
         }
         Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
         gpsData = "${position.latitude}, ${position.longitude}";
+
+        // ✅ === CEK JARAK DARI SEKOLAH ===
+        double jarak = hitungJarak(
+          position.latitude,
+          position.longitude,
+          sekolahLat,
+          sekolahLng,
+        );
+
+        if (jarak > radiusMeter) {
+          throw '❌ Lokasi Anda Terlalu Jauh!\nJarak Anda: ${jarak.toStringAsFixed(0)} meter\nBatas Maksimal: $radiusMeter meter dari sekolah';
+        }
+        // ✅ === AKHIR CEK JARAK ===
       }
 
       String fotoData = "-";

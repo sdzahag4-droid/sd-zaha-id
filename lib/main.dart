@@ -143,7 +143,11 @@ class _AbsenScreenState extends State<AbsenScreen> {
         "foto": fotoData,
       };
 
-      var response = await http.post(Uri.parse(scriptUrl), body: jsonEncode(body));
+      var response = await http.post(
+      Uri.parse(scriptUrl),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(body),
+    );
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Absen Berhasil Terkirim & Notifikasi Telegram Terkirim!')));
         Navigator.pop(context);

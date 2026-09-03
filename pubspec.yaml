@@ -24,7 +24,16 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  # ✅ Daftarkan lokasi file ikon/aset
+  assets:
+    - assets/app_icon.png
+
+# ✅ Pengaturan Ikon Aplikasi — Latar Putih Sesuai Gambar
 flutter_launcher_icons:
   image_path: "assets/app_icon.png"
   android: true
   ios: true
+  # ✅ Latar belakang ikon ANDROID = PUTIH (sesuai gambarmu)
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/app_icon.png"
+  remove_alpha_ios: true

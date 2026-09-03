@@ -177,7 +177,6 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // ✅ JUDUL SUDAH DIHAPUS BAGIAN "Portal Sekolah"
         title: const Text('SD ZAHA.ID', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.green[700],
         actions: [
@@ -304,7 +303,7 @@ class MenuCard extends StatelessWidget {
   }
 }
 
-// ==================== HALAMAN ABSENSI ====================
+// ==================== HALAMAN ABSENSI (DIPERBAIKI) ====================
 class AbsenScreen extends StatefulWidget {
   const AbsenScreen({super.key});
   @override
@@ -312,13 +311,24 @@ class AbsenScreen extends StatefulWidget {
 }
 
 class _AbsenScreenState extends State<AbsenScreen> {
-  final TextEditingController nameController = TextEditingController();
+  // ✅ Nama Lengkap OTOMATIS diisi dari data login & TIDAK BISA DIUBAH
+  late final TextEditingController nameController;
   final TextEditingController ketController = TextEditingController();
   bool isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // ✅ Ambil nama lengkap dari data login yang sudah disimpan
+    nameController = TextEditingController(text: LoginData.nama);
+  }
+
   void submitAbsen(String status, {bool needGps = false, bool needCamera = false, bool useBackCamera = false}) async {
+    // ✅ Tidak perlu isi nama karena sudah otomatis terisi
     if (nameController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama Lengkap wajib diisi!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⚠️ Data login tidak ditemukan. Silakan login ulang!')),
+      );
       return;
     }
 
@@ -386,9 +396,25 @@ class _AbsenScreenState extends State<AbsenScreen> {
               padding: const EdgeInsets.all(16.0),
               child: ListView(
                 children: [
-                  TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nama Lengkap', border: OutlineInputBorder())),
+                  // ✅ Nama Lengkap TAMPIL OTOMATIS & TIDAK BISA DIUBAH
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nama Lengkap',
+                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: Color(0xFFF5F5F5),
+                    ),
+                    enabled: false, // ← TIDAK BISA DIUBAH
+                  ),
                   const SizedBox(height: 12),
-                  TextField(controller: ketController, decoration: const InputDecoration(labelText: 'Keterangan / Alasan', border: OutlineInputBorder())),
+                  TextField(
+                    controller: ketController,
+                    decoration: const InputDecoration(
+                      labelText: 'Keterangan / Alasan',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
                     onPressed: (currentTimeMinutes >= 345 && currentTimeMinutes <= 450)

@@ -116,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextField(
                   controller: idController,
                   decoration: const InputDecoration(
-                    labelText: 'ID / NIP Guru',
+                    labelText: 'Username',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.person),
                   ),

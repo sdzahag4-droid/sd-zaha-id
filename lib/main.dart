@@ -5,7 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// Ganti dengan URL Web App Google Apps Script Anda
+// ✅ URL SUDAH BENAR
 const String scriptUrl = "https://script.google.com/macros/s/AKfycbzmwc8kVmf17HjXVn7MFf-85ZxPfZG8x0oc4aI2j64Ym6sphMp2vhnRfrIyoTHokYD5gg/exec";
 
 void main() {
@@ -14,7 +14,6 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -23,29 +22,29 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.green,
         useMaterial3: true,
       ),
-      home: const LoginScreen(), // Memulai aplikasi dari halaman Login
+      home: const LoginScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
-// ==================== HALAMAN LOGIN ====================
+// ==================== HALAMAN LOGIN (DIPERBAIKI) ====================
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController idController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool isLoading = false;
 
+  // ✅ LOGIKA LOGIN BARU — KIRIM DATA KE SERVER, BUKAN UNDUH SEMUA DATA
   void handleLogin() async {
-    if (idController.text.isEmpty || passwordController.text.isEmpty) {
+    if (usernameController.text.isEmpty || passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ID dan Password wajib diisi!')),
+        const SnackBar(content: Text('Username dan Password wajib diisi!')),
       );
       return;
     }
@@ -53,40 +52,45 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => isLoading = true);
 
     try {
-      // Mengambil data dari sheet GuruKaryawan untuk validasi
-      final response = await http.get(Uri.parse("$scriptUrl?action=getData&sheet=GuruKaryawan"));
+      // ✅ KIRIM DATA LOGIN KE SERVER MENGGUNAKAN POST
+      final response = await http.post(
+        Uri.parse(scriptUrl),
+        body: jsonEncode({
+          "action": "login",
+          "username": usernameController.text.trim(),
+          "password": passwordController.text.trim(),
+        }),
+      );
+
       if (response.statusCode == 200) {
-        List dataList = jsonDecode(response.body);
-        
-        // Cek apakah ID dan Password cocok dengan data di database (Google Sheets)
-        // Sesuaikan nama kolom key ("ID", "Password", dll) dengan header sheet Anda
-        bool isValid = dataList.any((item) {
-          String dbId = item['ID']?.toString() ?? item.values.elementAt(0).toString();
-          String dbPass = item['Password']?.toString() ?? item.values.last.toString();
-          return dbId == idController.text && dbPass == passwordController.text;
-        });
+        final result = jsonDecode(response.body);
 
-        setState(() => isLoading = false);
+        if (result['status'] == 'success') {
+          // ✅ LOGIN BERHASIL
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('✅ Selamat datang, ${result['nama']}!')),
+          );
 
-        if (isValid) {
-          // Jika valid, masuk ke HomeScreen
+          // Pindah ke Halaman Utama
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const HomeScreen()),
           );
         } else {
+          // ❌ LOGIN GAGAL
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('ID atau Password salah!')),
+            SnackBar(content: Text('⚠️ ${result['message']}')),
           );
         }
       } else {
-        throw 'Gagal terhubung ke database';
+        throw 'Gagal terhubung ke server';
       }
     } catch (e) {
-      setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text('❌ Error: $e')),
       );
+    } finally {
+      setState(() => isLoading = false);
     }
   }
 
@@ -114,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 32),
                 TextField(
-                  controller: idController,
+                  controller: usernameController,
                   decoration: const InputDecoration(
                     labelText: 'Username',
                     border: OutlineInputBorder(),
@@ -158,7 +162,6 @@ class _LoginScreenState extends State<LoginScreen> {
 // ==================== HALAMAN UTAMA (HOME) ====================
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -169,7 +172,6 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () {
-              // Tombol keluar kembali ke LoginScreen
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -204,9 +206,7 @@ class MenuCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-
   const MenuCard({super.key, required this.title, required this.icon, required this.color, required this.onTap});
-
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -228,9 +228,9 @@ class MenuCard extends StatelessWidget {
   }
 }
 
+// ==================== HALAMAN ABSENSI ====================
 class AbsenScreen extends StatefulWidget {
   const AbsenScreen({super.key});
-
   @override
   State<AbsenScreen> createState() => _AbsenScreenState();
 }
@@ -283,14 +283,15 @@ class _AbsenScreenState extends State<AbsenScreen> {
       };
 
       var response = await http.post(Uri.parse(scriptUrl), body: jsonEncode(body));
+
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Absen Berhasil Terkirim & Notifikasi Telegram Terkirim!')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Absen Berhasil Terkirim!')));
         Navigator.pop(context);
       } else {
         throw 'Gagal terhubung ke Google Sheets';
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: $e')));
     } finally {
       setState(() => isLoading = false);
     }
@@ -369,11 +370,11 @@ class _AbsenScreenState extends State<AbsenScreen> {
   }
 }
 
+// ==================== HALAMAN DATA (Tetap dipakai untuk menu lain) ====================
 class DataViewScreen extends StatefulWidget {
   final String sheetName;
   final String title;
   const DataViewScreen({super.key, required this.sheetName, required this.title});
-
   @override
   State<DataViewScreen> createState() => _DataViewScreenState();
 }
@@ -427,9 +428,9 @@ class _DataViewScreenState extends State<DataViewScreen> {
   }
 }
 
+// ==================== HALAMAN LAINNYA ====================
 class ChatAdminScreen extends StatelessWidget {
   const ChatAdminScreen({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -457,7 +458,6 @@ class ChatAdminScreen extends StatelessWidget {
 
 class SosmedScreen extends StatelessWidget {
   const SosmedScreen({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(

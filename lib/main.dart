@@ -5,18 +5,18 @@ import 'dart:math'; // ✅ Untuk fungsi hitung jarak
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 // ==== LOKASI SEKOLAH SD ZAHA.ID ====
-// Koordinat dari Google Maps
 const double sekolahLat = -7.787908;
 const double sekolahLng = 113.375106;
-
-// Batas jarak maksimal dari sekolah (dalam meter)
 const double radiusMeter = 100;
 
 // ==== FUNGSI HITUNG JARAK ====
 double hitungJarak(double latUser, double lngUser, double latSekolah, double lngSekolah) {
-  const double jariJariBumi = 6371000; // meter
+  const double jariJariBumi = 6371000;
   double lat1 = latUser * pi / 180;
   double lat2 = latSekolah * pi / 180;
   double deltaLat = (latSekolah - latUser) * pi / 180;
@@ -27,7 +27,7 @@ double hitungJarak(double latUser, double lngUser, double latSekolah, double lng
       sin(deltaLng / 2) * sin(deltaLng / 2);
   double c = 2 * atan2(sqrt(a), sqrt(1 - a));
 
-  return jariJariBumi * c; // Hasil dalam meter
+  return jariJariBumi * c;
 }
 
 // ==== DATA LOGIN ====
@@ -39,7 +39,32 @@ class LoginData {
   static bool isAdmin = false;
 }
 
-// ✅ URL SUDAH BENAR
+// ✅ PENYIMPANAN LOKAL UNTUK FITUR TAMBAH/HAPUS MANUAL
+class LocalDataStorage {
+  static Map<String, List<String>> items = {
+    'Jadwal Sekolah': [
+      '07.00 - 07.15 : Upacara / Doa Pagi',
+      '07.15 - 12.00 : Kegiatan Belajar Mengajar',
+      '12.00 - 13.00 : Istirahat & Sholat Dzuhur Berjamaah'
+    ],
+    'Sarana Sekolah': [
+      'Ruang Kelas 1 sampai 6',
+      'Laboratorium Komputer',
+      'Perpustakaan Digital Sekolah',
+      'Lapangan Olahraga Utama'
+    ],
+    'Agenda Sekolah': [
+      'Rapat Koordinasi Guru dan Karyawan Bulanan',
+      'Porseni Antar Kelas Semester Ganjil',
+      'Penerimaan Rapor Hasil Belajar Siswa'
+    ],
+    'Informasi Penting': [
+      'Seluruh guru dan karyawan wajib hadir pukul 06.45 WIB.',
+      'Pengumpulan rekap penilaian paling lambat akhir pekan ini.'
+    ],
+  };
+}
+
 const String scriptUrl = "https://script.google.com/macros/s/AKfycbzmwc8kVmf17HjXVn7MFf-85ZxPfZG8x0oc4aI2j64Ym6sphMp2vhnRfrIyoTHokYD5gg/exec";
 
 void main() {
@@ -98,7 +123,6 @@ class _LoginScreenState extends State<LoginScreen> {
         final result = jsonDecode(response.body);
 
         if (result['status'] == 'success') {
-          // ✅ SIMPAN DATA LOGIN
           LoginData.nama = result['nama'] ?? "";
           LoginData.username = result['username'] ?? "";
           LoginData.jabatan = result['jabatan'] ?? "";
@@ -208,7 +232,6 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () {
-              // ✅ KOSONGKAN DATA SAAT LOGOUT
               LoginData.nama = "";
               LoginData.username = "";
               LoginData.jabatan = "";
@@ -235,39 +258,36 @@ class HomeScreen extends StatelessWidget {
             color: Colors.blue,
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AbsenScreen())),
           ),
-
-          // ✅ REKAP ABSEN — HANYA MUNCUL JIKA ADMIN
           if (LoginData.isAdmin)
             MenuCard(
               title: 'Rekap Absen',
               icon: Icons.assessment,
               color: Colors.brown,
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'RekapAbsen', title: 'Rekap Absen'))),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RekapAbsenScreen())),
             ),
-
           MenuCard(
             title: 'Jadwal Sekolah',
             icon: Icons.schedule,
             color: Colors.orange,
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Jadwal', title: 'Jadwal Sekolah'))),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocalCrudScreen(title: 'Jadwal Sekolah'))),
           ),
           MenuCard(
             title: 'Sarana Prasarana',
             icon: Icons.inventory,
             color: Colors.purple,
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Sarana', title: 'Sarana Sekolah'))),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocalCrudScreen(title: 'Sarana Sekolah'))),
           ),
           MenuCard(
             title: 'Agenda Sekolah',
             icon: Icons.event,
             color: Colors.red,
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Agenda', title: 'Agenda Sekolah'))),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocalCrudScreen(title: 'Agenda Sekolah'))),
           ),
           MenuCard(
             title: 'Profil Guru & Karyawan',
             icon: Icons.people,
             color: Colors.teal,
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'GuruKaryawan', title: 'Profil Guru & Karyawan'))),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GuruKaryawanScreen())),
           ),
           MenuCard(
             title: 'Chat Admin',
@@ -285,7 +305,7 @@ class HomeScreen extends StatelessWidget {
             title: 'Informasi Penting',
             icon: Icons.info,
             color: Colors.amber,
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataViewScreen(sheetName: 'Informasi', title: 'Informasi Penting'))),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocalCrudScreen(title: 'Informasi Penting'))),
           ),
         ],
       ),
@@ -328,7 +348,7 @@ class MenuCard extends StatelessWidget {
   }
 }
 
-// ==================== HALAMAN ABSENSI (DENGAN CEK JARAK) ====================
+// ==================== HALAMAN ABSENSI ====================
 class AbsenScreen extends StatefulWidget {
   const AbsenScreen({super.key});
   @override
@@ -336,7 +356,6 @@ class AbsenScreen extends StatefulWidget {
 }
 
 class _AbsenScreenState extends State<AbsenScreen> {
-  // ✅ Nama Lengkap OTOMATIS diisi dari data login & TIDAK BISA DIUBAH
   late final TextEditingController nameController;
   final TextEditingController ketController = TextEditingController();
   bool isLoading = false;
@@ -344,12 +363,10 @@ class _AbsenScreenState extends State<AbsenScreen> {
   @override
   void initState() {
     super.initState();
-    // ✅ Ambil nama lengkap dari data login yang sudah disimpan
     nameController = TextEditingController(text: LoginData.nama);
   }
 
   void submitAbsen(String status, {bool needGps = false, bool needCamera = false, bool useBackCamera = false}) async {
-    // ✅ Tidak perlu isi nama karena sudah otomatis terisi
     if (nameController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('⚠️ Data login tidak ditemukan. Silakan login ulang!')),
@@ -372,18 +389,10 @@ class _AbsenScreenState extends State<AbsenScreen> {
         Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
         gpsData = "${position.latitude}, ${position.longitude}";
 
-        // ✅ === CEK JARAK DARI SEKOLAH ===
-        double jarak = hitungJarak(
-          position.latitude,
-          position.longitude,
-          sekolahLat,
-          sekolahLng,
-        );
-
+        double jarak = hitungJarak(position.latitude, position.longitude, sekolahLat, sekolahLng);
         if (jarak > radiusMeter) {
-          throw '❌ Lokasi Anda Terlalu Jauh!\nJarak Anda: ${jarak.toStringAsFixed(0)} meter\nBatas Maksimal: $radiusMeter meter dari sekolah';
+          throw '❌ Lokasi Terlalu Jauh!\nJarak Anda: ${jarak.toStringAsFixed(0)} meter\nBatas Maksimal: $radiusMeter meter dari sekolah';
         }
-        // ✅ === AKHIR CEK JARAK ===
       }
 
       String fotoData = "-";
@@ -434,7 +443,6 @@ class _AbsenScreenState extends State<AbsenScreen> {
               padding: const EdgeInsets.all(16.0),
               child: ListView(
                 children: [
-                  // ✅ Nama Lengkap TAMPIL OTOMATIS & TIDAK BISA DIUBAH
                   TextField(
                     controller: nameController,
                     decoration: const InputDecoration(
@@ -443,7 +451,7 @@ class _AbsenScreenState extends State<AbsenScreen> {
                       filled: true,
                       fillColor: Color(0xFFF5F5F5),
                     ),
-                    enabled: false, // ← TIDAK BISA DIUBAH
+                    enabled: false,
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -510,42 +518,27 @@ class _AbsenScreenState extends State<AbsenScreen> {
   }
 }
 
-// ==================== HALAMAN DATA ====================
-class DataViewScreen extends StatefulWidget {
-  final String sheetName;
-  final String title;
-
-  const DataViewScreen({super.key, required this.sheetName, required this.title});
+// ==================== REVISI 1: PROFIL GURU & KARYAWAN (BERSIH & NOMOR URUT) ====================
+class GuruKaryawanScreen extends StatefulWidget {
+  const GuruKaryawanScreen({super.key});
 
   @override
-  State<DataViewScreen> createState() => _DataViewScreenState();
+  State<GuruKaryawanScreen> createState() => _GuruKaryawanScreenState();
 }
 
-class _DataViewScreenState extends State<DataViewScreen> {
+class _GuruKaryawanScreenState extends State<GuruKaryawanScreen> {
   List dataList = [];
   bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-
-    // ✅ LAPISAN KEAMANAN: HANYA ADMIN YANG BUKA REKAP ABSEN
-    if (widget.sheetName == "RekapAbsen" && !LoginData.isAdmin) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('⚠️ Hanya Admin yang dapat mengakses Rekap Absen!')),
-        );
-        Navigator.pop(context);
-      });
-      return;
-    }
-
     fetchData();
   }
 
   void fetchData() async {
     try {
-      final response = await http.get(Uri.parse("$scriptUrl?action=getData&sheet=${widget.sheetName}"));
+      final response = await http.get(Uri.parse("$scriptUrl?action=getData&sheet=GuruKaryawan"));
       if (response.statusCode == 200) {
         setState(() {
           dataList = jsonDecode(response.body);
@@ -559,21 +552,39 @@ class _DataViewScreenState extends State<DataViewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Saring baris kosong dan ID == 'SD0'
+    final filteredList = dataList.where((item) {
+      final id = item['ID']?.toString() ?? '';
+      final nama = item['Nama Lengkap']?.toString() ?? '';
+      return id != 'SD0' && nama.trim().isNotEmpty;
+    }).toList();
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: AppBar(title: const Text('Profil Guru & Karyawan')),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : dataList.isEmpty
-              ? const Center(child: Text('Belum ada data di Google Sheets.'))
+          : filteredList.isEmpty
+              ? const Center(child: Text('Belum ada data guru & karyawan.'))
               : ListView.builder(
-                  itemCount: dataList.length,
+                  itemCount: filteredList.length,
                   itemBuilder: (context, index) {
-                    var item = dataList[index];
+                    var item = filteredList[index];
+                    int nomor = index + 1;
                     return Card(
                       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       child: ListTile(
-                        title: Text(item.values.first.toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(item.toString()),
+                        leading: CircleAvatar(
+                          backgroundColor: Colors.teal,
+                          child: Text('$nomor', style: const TextStyle(color: Colors.white)),
+                        ),
+                        title: Text('$nomor. ${item['Nama Lengkap'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Jabatan: ${item['Jabatan'] ?? '-'}'),
+                            Text('Telegram: ${item['Username Telegram'] ?? '-'}'),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -582,7 +593,286 @@ class _DataViewScreenState extends State<DataViewScreen> {
   }
 }
 
-// ==================== HALAMAN LAINNYA ====================
+// ==================== REVISI 3: REKAP ABSEN (BULANAN + EKSPOR PDF) ====================
+class RekapAbsenScreen extends StatefulWidget {
+  const RekapAbsenScreen({super.key});
+
+  @override
+  State<RekapAbsenScreen> createState() => _RekapAbsenScreenState();
+}
+
+class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
+  List dataList = [];
+  bool isLoading = true;
+  String selectedMonth = 'September';
+  String selectedYear = '2026';
+
+  final List<String> months = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (!LoginData.isAdmin) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('⚠️ Hanya Admin yang dapat mengakses Rekap Absen!')),
+        );
+      });
+      return;
+    }
+    fetchData();
+  }
+
+  void fetchData() async {
+    try {
+      final response = await http.get(Uri.parse("$scriptUrl?action=getData&sheet=RekapAbsen"));
+      if (response.statusCode == 200) {
+        setState(() {
+          dataList = jsonDecode(response.body);
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+    }
+  }
+
+  void exportPdf() async {
+    final pdf = pw.Document();
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text('Rekap Absen Guru dan Karyawan', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.Text('SD Zainul Hasan Genggong', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Periode Bulan: $selectedMonth $selectedYear', style: pw.TextStyle(fontSize: 12)),
+              pw.SizedBox(height: 15),
+              pw.Table.fromTextArray(
+                headers: ['No', 'Data / Rekap Absen'],
+                data: List.generate(dataList.length, (index) {
+                  return [
+                    (index + 1).toString(),
+                    dataList[index].toString(),
+                  ];
+                }),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onPdfCreate: (format) async => pdf.save(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Rekap Absen'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf),
+            tooltip: 'Export PDF',
+            onPressed: exportPdf,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            color: Colors.grey[100],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Rekap Absen Guru dan Karyawan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text('SD Zainul Hasan Genggong', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(labelText: 'Periode Bulan', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                        value: selectedMonth,
+                        items: months.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                        onChanged: (val) => setState(() => selectedMonth = val!),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextFormField(
+                        decoration: const InputDecoration(labelText: 'Tahun', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                        initialValue: selectedYear,
+                        onChanged: (val) => selectedYear = val,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                    onPressed: exportPdf,
+                    icon: const Icon(Icons.picture_as_pdf),
+                    label: const Text('Export Rekap ke PDF'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : dataList.isEmpty
+                    ? const Center(child: Text('Belum ada data rekap absen.'))
+                    : ListView.builder(
+                        itemCount: dataList.length,
+                        itemBuilder: (context, index) {
+                          var item = dataList[index];
+                          int nomor = index + 1;
+                          return Card(
+                            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: Colors.brown,
+                                child: Text('$nomor', style: const TextStyle(color: Colors.white)),
+                              ),
+                              title: Text('$nomor. ${item.values.first.toString()}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: Text(item.toString()),
+                            ),
+                          );
+                        },
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ==================== REVISI 5: FITUR TAMBAH & HAPUS MANUAL (LOKAL) ====================
+class LocalCrudScreen extends StatefulWidget {
+  final String title;
+  const LocalCrudScreen({super.key, required this.title});
+
+  @override
+  State<LocalCrudScreen> createState() => _LocalCrudScreenState();
+}
+
+class _LocalCrudScreenState extends State<LocalCrudScreen> {
+  late List<String> currentList;
+
+  @override
+  void initState() {
+    super.initState();
+    LocalDataStorage.items.putIfAbsent(widget.title, () => []);
+    currentList = LocalDataStorage.items[widget.title]!;
+  }
+
+  void _addItem() {
+    TextEditingController controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Tambah ${widget.title}'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(hintText: 'Masukkan data baru...', border: OutlineInputBorder()),
+            maxLines: 3,
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+            ElevatedButton(
+              onPressed: () {
+                if (controller.text.trim().isNotEmpty) {
+                  setState(() {
+                    currentList.add(controller.text.trim());
+                  });
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Berhasil ditambahkan!')));
+                }
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _deleteItem(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Data'),
+        content: const Text('Apakah Anda yakin ingin menghapus item ini?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () {
+              setState(() {
+                currentList.removeAt(index);
+              });
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🗑️ Berhasil dihapus!')));
+            },
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.title)),
+      body: currentList.isEmpty
+          ? Center(child: Text('Belum ada data ${widget.title}. Ketuk tombol tambah di bawah.'))
+          : ListView.builder(
+              itemCount: currentList.length,
+              itemBuilder: (context, index) {
+                int nomor = index + 1;
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.green[700],
+                      child: Text('$nomor', style: const TextStyle(color: Colors.white)),
+                    ),
+                    title: Text('$nomor. ${currentList[index]}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _deleteItem(index),
+                    ),
+                  ),
+                );
+              },
+            ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addItem,
+        icon: const Icon(Icons.add),
+        label: Text('Tambah ${widget.title}'),
+        backgroundColor: Colors.green[700],
+        foregroundColor: Colors.white,
+      ),
+    );
+  }
+}
+
+// ==================== REVISI 4: CHAT ADMIN ====================
 class ChatAdminScreen extends StatelessWidget {
   const ChatAdminScreen({super.key});
   @override
@@ -594,15 +884,15 @@ class ChatAdminScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.chat, color: Colors.green, size: 36),
             title: const Text('WhatsApp Admin SD ZAHA.ID'),
-            subtitle: const Text('Ketuk untuk diarahkan ke WhatsApp Admin'),
-            onTap: () => launchUrl(Uri.parse("https://wa.me/6281234567890"), mode: LaunchMode.externalApplication),
+            subtitle: const Text('0857-9251-8395 (Ketuk untuk chat)'),
+            onTap: () => launchUrl(Uri.parse("https://wa.me/6285792518395"), mode: LaunchMode.externalApplication),
           ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.telegram, color: Colors.blue, size: 36),
             title: const Text('Telegram Admin SD ZAHA.ID'),
-            subtitle: const Text('Ketuk untuk diarahkan ke Telegram Admin'),
-            onTap: () => launchUrl(Uri.parse("https://t.me/username_admin"), mode: LaunchMode.externalApplication),
+            subtitle: const Text('@azkiyak07 (Ketuk untuk chat)'),
+            onTap: () => launchUrl(Uri.parse("https://t.me/azkiyak07"), mode: LaunchMode.externalApplication),
           ),
         ],
       ),
@@ -610,6 +900,7 @@ class ChatAdminScreen extends StatelessWidget {
   }
 }
 
+// ==================== REVISI 2: SOSIAL MEDIA SEKOLAH LENGKAP ====================
 class SosmedScreen extends StatelessWidget {
   const SosmedScreen({super.key});
   @override
@@ -621,27 +912,38 @@ class SosmedScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.camera_alt, color: Colors.purple),
             title: const Text('Instagram Resmi SD ZAHA.ID'),
-            onTap: () => launchUrl(Uri.parse("https://instagram.com"), mode: LaunchMode.externalApplication),
-          ),
-          ListTile(
-            leading: const Icon(Icons.video_collection, color: Colors.black),
-            title: const Text('TikTok Resmi SD ZAHA.ID'),
-            onTap: () => launchUrl(Uri.parse("https://tiktok.com"), mode: LaunchMode.externalApplication),
+            subtitle: const Text('https://www.instagram.com/sdzahag4/'),
+            onTap: () => launchUrl(Uri.parse("https://www.instagram.com/sdzahag4/"), mode: LaunchMode.externalApplication),
           ),
           ListTile(
             leading: const Icon(Icons.play_arrow, color: Colors.red),
             title: const Text('Channel YouTube SD ZAHA.ID'),
-            onTap: () => launchUrl(Uri.parse("https://youtube.com"), mode: LaunchMode.externalApplication),
+            subtitle: const Text('https://www.youtube.com/channel/UCHx4mIM0fpCHL0fsQL6Z-rQ/videos'),
+            onTap: () => launchUrl(Uri.parse("https://www.youtube.com/channel/UCHx4mIM0fpCHL0fsQL6Z-rQ/videos"), mode: LaunchMode.externalApplication),
+          ),
+          ListTile(
+            leading: const Icon(Icons.video_collection, color: Colors.black),
+            title: const Text('TikTok Resmi SD ZAHA.ID'),
+            subtitle: const Text('https://www.tiktok.com/@sdzahag4'),
+            onTap: () => launchUrl(Uri.parse("https://www.tiktok.com/@sdzahag4"), mode: LaunchMode.externalApplication),
+          ),
+          ListTile(
+            leading: const Icon(Icons.language, color: Colors.blueAccent),
+            title: const Text('Website Resmi SD ZAHA.ID'),
+            subtitle: const Text('https://www.sdzaha.sch.id/'),
+            onTap: () => launchUrl(Uri.parse("https://www.sdzaha.sch.id/"), mode: LaunchMode.externalApplication),
+          ),
+          ListTile(
+            leading: const Icon(Icons.facebook, color: Colors.blue),
+            title: const Text('Fanspage Facebook SD ZAHA.ID'),
+            subtitle: const Text('https://www.facebook.com/profile.php?id=61560695901686'),
+            onTap: () => launchUrl(Uri.parse("https://www.facebook.com/profile.php?id=61560695901686"), mode: LaunchMode.externalApplication),
           ),
           ListTile(
             leading: const Icon(Icons.message, color: Colors.green),
             title: const Text('Channel WhatsApp SD ZAHA.ID'),
-            onTap: () => launchUrl(Uri.parse("https://whatsapp.com"), mode: LaunchMode.externalApplication),
-          ),
-          ListTile(
-            leading: const Icon(Icons.send, color: Colors.blue),
-            title: const Text('Channel Telegram SD ZAHA.ID'),
-            onTap: () => launchUrl(Uri.parse("https://t.me/channel_sekolah"), mode: LaunchMode.externalApplication),
+            subtitle: const Text('https://whatsapp.com/channel/0029VbAhEFdCcW4vU6pekE1T'),
+            onTap: () => launchUrl(Uri.parse("https://whatsapp.com/channel/0029VbAhEFdCcW4vU6pekE1T"), mode: LaunchMode.externalApplication),
           ),
         ],
       ),

@@ -669,7 +669,7 @@ class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
     );
 
     await Printing.layoutPdf(
-      onPdfCreate: (format) async => pdf.save(),
+      onLayout: (format) async => pdf.save(),
     );
   }
 

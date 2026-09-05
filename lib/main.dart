@@ -657,24 +657,77 @@ class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
 
   void exportPdf() async {
     final pdf = pw.Document();
+    
+    // Memetakan data agar tersusun menjadi kolom terpisah persis seperti di Google Sheets
+    List<List<String>> tableData = [];
+    for (int i = 0; i < dataList.length; i++) {
+      var item = dataList[i];
+      String nama = "";
+      String hadir = "0";
+      String sakit = "0";
+      String izin = "0";
+      String terlambat = "0";
+      String cuti = "0";
+      String tidakMasuk = "0";
+      String total = "0";
+
+      if (item is Map) {
+        // Mengambil kunci nilai berdasarkan header dari sheet RekapAbsen
+        var keys = item.keys.toList();
+        if (keys.isNotEmpty) nama = item[keys[0]]?.toString() ?? "";
+        if (keys.length > 1) hadir = item[keys[1]]?.toString() ?? "0";
+        if (keys.length > 2) sakit = item[keys[2]]?.toString() ?? "0";
+        if (keys.length > 3) izin = item[keys[3]]?.toString() ?? "0";
+        if (keys.length > 4) terlambat = item[keys[4]]?.toString() ?? "0";
+        if (keys.length > 5) cuti = item[keys[5]]?.toString() ?? "0";
+        if (keys.length > 6) tidakMasuk = item[keys[6]]?.toString() ?? "0";
+        if (keys.length > 7) total = item[keys[7]]?.toString() ?? "0";
+      }
+
+      if (nama.trim().isNotEmpty) {
+        tableData.add([
+          (tableData.length + 1).toString(),
+          nama,
+          hadir,
+          sakit,
+          izin,
+          terlambat,
+          cuti,
+          tidakMasuk,
+          total,
+        ]);
+      }
+    }
+
     pdf.addPage(
       pw.Page(
+        pageFormat: PdfPageFormat.letter,
         build: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Text('Rekap Absen Guru dan Karyawan', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-              pw.Text('SD Zainul Hasan Genggong', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-              pw.Text('Periode Bulan: $selectedMonth $selectedYear', style: pw.TextStyle(fontSize: 12)),
-              pw.SizedBox(height: 15),
+              pw.Text('Rekap Absen Guru dan Karyawan', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.Text('SD Zainul Hasan Genggong', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Periode Bulan: $selectedMonth $selectedYear', style: pw.TextStyle(fontSize: 10)),
+              pw.SizedBox(height: 12),
               pw.Table.fromTextArray(
-                headers: ['No', 'Data / Rekap Absen'],
-                data: List.generate(dataList.length, (index) {
-                  return [
-                    (index + 1).toString(),
-                    dataList[index].toString(),
-                  ];
-                }),
+                headers: ['No', 'Nama Lengkap', 'Hadir', 'Sakit', 'Izin', 'Terlambat', 'Cuti', 'Tidak Masuk', 'Total'],
+                data: tableData,
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+                cellAlignment: pw.Alignment.centerLeft,
+                columnWidths: {
+                  0: const pw.FixedColumnWidth(25),
+                  1: const pw.FlexColumnWidth(3),
+                  2: const pw.FixedColumnWidth(30),
+                  3: const pw.FixedColumnWidth(30),
+                  4: const pw.FixedColumnWidth(30),
+                  5: const pw.FixedColumnWidth(40),
+                  6: const pw.FixedColumnWidth(30),
+                  7: const pw.FixedColumnWidth(45),
+                  8: const pw.FixedColumnWidth(30),
+                },
               ),
             ],
           );

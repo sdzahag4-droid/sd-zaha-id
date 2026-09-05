@@ -110,17 +110,11 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => isLoading = true);
 
     try {
-      final response = await http.post(
-        Uri.parse(scriptUrl),
-        headers: {
-          "Content-Type": "application/json", // 👈 Pastikan baris ini ada
-        },
-        body: jsonEncode({
-          "action": "login",
-          "username": usernameController.text.trim(),
-          "password": passwordController.text.trim(),
-        }),
+      final encodedUrl = Uri.parse(
+        "$scriptUrl?action=login&username=${Uri.encodeComponent(usernameController.text.trim())}&password=${Uri.encodeComponent(passwordController.text.trim())}"
       );
+      
+      final response = await http.get(encodedUrl);
 
       // Tangani status 200 atau 302 (redirect Google Apps Script)
       if (response.statusCode == 200 || response.statusCode == 302) {
@@ -147,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         }
       } else {
-        throw 'Gagal terhubung ke server';
+        throw 'Gagal terhubung ke server (Status: ${response.statusCode})';
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

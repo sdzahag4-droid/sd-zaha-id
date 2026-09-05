@@ -1,6 +1,6 @@
 plugins {
-    id("com.android.application")
-    id("dev.flutter.flutter-gradle-plugin")
+    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
+    id("com.android.application") version "8.7.0" apply false // atau versi AGP Anda
 }
 
 android {

@@ -5,6 +5,10 @@ allprojects {
     }
 }
 
+plugins {
+    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
+}
+
 val newBuildDir: Directory =
     rootProject.layout.buildDirectory
         .dir("../../build")
@@ -15,8 +19,22 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+// Tambahkan blok ini di bagian bawah untuk menyamakan SDK plugin pihak ketiga ke SDK 36
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.extensions.configure<com.android.build.gradle.BaseExtension> {
+                if (compileSdkVersion == null || compileSdkVersion < 36) {
+                    compileSdkVersion(36)
+                }
+            }
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

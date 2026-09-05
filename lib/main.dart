@@ -377,7 +377,6 @@ class _AbsenScreenState extends State<AbsenScreen> {
           preferredCameraDevice: useBackCamera ? CameraDevice.rear : CameraDevice.front,
         );
         if (image != null) {
-          // ✅ Ubah file gambar ke Base64 agar bisa diunggah ke Google Drive melalui Apps Script
           final bytes = await image.readAsBytes();
           fotoData = "data:image/jpeg;base64," + base64Encode(bytes);
         }
@@ -776,29 +775,56 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
   }
 
   void _addItem() {
-    TextEditingController controller = TextEditingController();
+    TextEditingController nameController = TextEditingController();
+    TextEditingController conditionController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text('Tambah ${widget.sheetName}'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(hintText: 'Masukkan data baru...', border: OutlineInputBorder()),
-            maxLines: 3,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: widget.sheetName == 'Sarana' ? 'Nama Sarana' : 'Masukkan data baru...', 
+                    border: const OutlineInputBorder()
+                  ),
+                  maxLines: 2,
+                ),
+                if (widget.sheetName == 'Sarana') ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: conditionController,
+                    decoration: const InputDecoration(
+                      labelText: 'Kondisi Barang (Contoh: Baik / Rusak)', 
+                      border: OutlineInputBorder()
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
             ElevatedButton(
               onPressed: () async {
-                if (controller.text.trim().isNotEmpty) {
+                if (nameController.text.trim().isNotEmpty) {
                   Navigator.pop(context);
                   setState(() => isLoading = true);
                   try {
+                    List<String> valuesToSend = [nameController.text.trim()];
+                    if (widget.sheetName == 'Sarana') {
+                      valuesToSend.add(conditionController.text.trim().isNotEmpty ? conditionController.text.trim() : 'Baik');
+                    }
+
                     var body = {
                       "action": "tambahData",
                       "sheet": widget.sheetName,
-                      "values": [controller.text.trim()],
+                      "values": valuesToSend,
                       "username": LoginData.username,
                       "role": LoginData.role,
                     };
@@ -846,7 +872,7 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
                 var body = {
                   "action": "hapusData",
                   "sheet": widget.sheetName,
-                  "row": rowIndex, // Indeks baris di spreadsheet (baris ke-index + 2 karena header di baris 1)
+                  "row": rowIndex,
                   "username": LoginData.username,
                   "role": LoginData.role,
                 };
@@ -888,9 +914,19 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
                   itemBuilder: (context, index) {
                     int nomor = index + 1;
                     var item = dataList[index];
-                    String displayValue = item is Map && item.isNotEmpty 
-                        ? item.values.first.toString() 
-                        : item.toString();
+                    
+                    String displayValue = "";
+                    String subtitleValue = "";
+
+                    if (widget.sheetName == 'Sarana' && item is Map) {
+                      var values = item.values.toList();
+                      displayValue = values.isNotEmpty ? values[0].toString() : '';
+                      subtitleValue = values.length > 1 ? "Kondisi: ${values[1]}" : "Kondisi: -";
+                    } else {
+                      displayValue = item is Map && item.isNotEmpty 
+                          ? item.values.first.toString() 
+                          : item.toString();
+                    }
 
                     return Card(
                       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -900,18 +936,17 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
                           child: Text('$nomor', style: const TextStyle(color: Colors.white)),
                         ),
                         title: Text('$nomor. $displayValue', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        // Tombol hapus HANYA muncul jika user adalah admin
+                        subtitle: subtitleValue.isNotEmpty ? Text(subtitleValue) : null,
                         trailing: LoginData.isAdmin
                             ? IconButton(
                                 icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _deleteItem(index + 2), // index + 2 mengarah ke baris asli Spreadsheet
+                                onPressed: () => _deleteItem(index + 2),
                               )
                             : null,
                       ),
                     );
                   },
                 ),
-      // Tombol tambah HANYA muncul jika user adalah admin
       floatingActionButton: LoginData.isAdmin
           ? FloatingActionButton.extended(
               onPressed: _addItem,

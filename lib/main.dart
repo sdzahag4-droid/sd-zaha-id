@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math'; // ✅ Untuk fungsi hitung jarak
+import 'dart:typed_data';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:excel/excel.dart';
 
 // ==== LOKASI SEKOLAH SD ZAHA.ID ====
 const double sekolahLat = -7.787908;
@@ -790,6 +793,80 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
     }
   }
 
+  // ✅ Fungsi Pilih & Unggah Excel (Disesuaikan dengan Panduan Gambar)
+  Future<void> uploadExcel() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'xls'],
+      );
+
+      if (result != null && result.files.single.bytes != null) {
+        Uint8List bytes = result.files.single.bytes!;
+        var excel = Excel.decodeBytes(bytes);
+
+        List<Map<String, dynamic>> excelDataList = [];
+
+        for (var table in excel.tables.keys) {
+          var sheet = excel.tables[table];
+          if (sheet == null || sheet.rows.length <= 1) continue;
+
+          List<String> headers = sheet.rows[0].map((e) => e?.value?.toString() ?? '').toList();
+
+          for (var i = 1; i < sheet.rows.length; i++) {
+            var row = sheet.rows[i];
+            Map<String, dynamic> rowData = {};
+            for (var j = 0; j < headers.length; j++) {
+              if (j < row.length) {
+                rowData[headers[j]] = row[j]?.value?.toString() ?? '';
+              }
+            }
+            if (rowData.values.any((val) => val.toString().isNotEmpty)) {
+              excelDataList.add(rowData);
+            }
+          }
+        }
+
+        if (excelDataList.isEmpty) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ File Excel kosong atau format tidak sesuai!')));
+          return;
+        }
+
+        if (!mounted) return;
+        setState(() => isLoading = true);
+
+        var body = {
+          "action": "importExcel",
+          "sheet": widget.sheetName,
+          "data": excelDataList,
+          "username": LoginData.username,
+          "role": LoginData.role,
+        };
+
+        var response = await http.post(
+          Uri.parse(scriptUrl),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode(body),
+        );
+
+        if (!mounted) return;
+        var resJson = jsonDecode(response.body);
+        if (resJson['status'] == 'success') {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Data Excel Berhasil Diunggah!')));
+          fetchData();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('⚠️ ${resJson['message']}')));
+          setState(() => isLoading = false);
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: $e')));
+      setState(() => isLoading = false);
+    }
+  }
+
   void _addItem() {
     TextEditingController nameController = TextEditingController();
     TextEditingController conditionController = TextEditingController();
@@ -803,6 +880,20 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (widget.sheetName == 'Jadwal') ...[
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      uploadExcel();
+                    },
+                    icon: const Icon(Icons.file_upload),
+                    label: const Text('Pilih & Unggah Excel Jadwal'),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Atau input manual di bawah:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 8),
+                ],
                 TextField(
                   controller: nameController,
                   decoration: InputDecoration(
@@ -826,52 +917,53 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Batal')),
-            ElevatedButton(
-              onPressed: () async {
-                if (nameController.text.trim().isNotEmpty) {
-                  Navigator.pop(dialogContext);
-                  
-                  if (!mounted) return;
-                  setState(() => isLoading = true);
-                  
-                  try {
-                    List<String> valuesToSend = [nameController.text.trim()];
-                    if (widget.sheetName == 'Sarana') {
-                      valuesToSend.add(conditionController.text.trim().isNotEmpty ? conditionController.text.trim() : 'Baik');
-                    }
-
-                    var body = {
-                      "action": "tambahData",
-                      "sheet": widget.sheetName,
-                      "values": valuesToSend,
-                      "username": LoginData.username,
-                      "role": LoginData.role,
-                    };
-                    var response = await http.post(
-                      Uri.parse(scriptUrl),
-                      headers: {"Content-Type": "application/json"},
-                      body: jsonEncode(body),
-                    );
+            if (widget.sheetName != 'Jadwal')
+              ElevatedButton(
+                onPressed: () async {
+                  if (nameController.text.trim().isNotEmpty) {
+                    Navigator.pop(dialogContext);
                     
                     if (!mounted) return;
+                    setState(() => isLoading = true);
                     
-                    var result = jsonDecode(response.body);
-                    if (result['status'] == 'success') {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Berhasil ditambahkan!')));
-                      fetchData();
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('⚠️ ${result['message']}')));
+                    try {
+                      List<String> valuesToSend = [nameController.text.trim()];
+                      if (widget.sheetName == 'Sarana') {
+                        valuesToSend.add(conditionController.text.trim().isNotEmpty ? conditionController.text.trim() : 'Baik');
+                      }
+
+                      var body = {
+                        "action": "tambahData",
+                        "sheet": widget.sheetName,
+                        "values": valuesToSend,
+                        "username": LoginData.username,
+                        "role": LoginData.role,
+                      };
+                      var response = await http.post(
+                        Uri.parse(scriptUrl),
+                        headers: {"Content-Type": "application/json"},
+                        body: jsonEncode(body),
+                      );
+                      
+                      if (!mounted) return;
+                      
+                      var result = jsonDecode(response.body);
+                      if (result['status'] == 'success') {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Berhasil ditambahkan!')));
+                        fetchData();
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('⚠️ ${result['message']}')));
+                        setState(() => isLoading = false);
+                      }
+                    } catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: $e')));
                       setState(() => isLoading = false);
                     }
-                  } catch (e) {
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: $e')));
-                    setState(() => isLoading = false);
                   }
-                }
-              },
-              child: const Text('Simpan'),
-            ),
+                },
+                child: const Text('Simpan'),
+              ),
           ],
         );
       },
@@ -1061,7 +1153,7 @@ class SosmedScreen extends StatelessWidget {
             leading: const Icon(Icons.message, color: Colors.green),
             title: const Text('Channel WhatsApp SD ZAHA.ID'),
             subtitle: const Text('https://whatsapp.com/channel/0029VbAhEFdCcW4vU6pekE1T'),
-            onTap: () => launchUrl(Uri.parse("https://whatsapp.com/channel/0029VbAhEFdCcW4vU6pekE1T"), mode: LaunchMode.externalApplication),
+            onTap: () => launchUrl(Uri.parse("https://whatsapp.com/channel/0029VbAhEFdGCW4vU6pekE1T"), mode: LaunchMode.externalApplication),
           ),
         ],
       ),

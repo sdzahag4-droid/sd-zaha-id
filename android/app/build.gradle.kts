@@ -1,5 +1,5 @@
 plugins {
-    id("org.jetbrains.kotlin.android") apply false
+    id("org.jetbrains.kotlin.android") version "2.3.20" apply false
 }
 
 android {

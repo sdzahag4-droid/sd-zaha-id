@@ -6,7 +6,7 @@ allprojects {
 }
 
 plugins {
-    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
+    id("org.jetbrains.kotlin.android")  apply false
 }
 
 val newBuildDir: Directory =

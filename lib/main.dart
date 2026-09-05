@@ -535,8 +535,16 @@ class _GuruKaryawanScreenState extends State<GuruKaryawanScreen> {
       final response = await http.get(Uri.parse("$scriptUrl?action=getData&sheet=GuruKaryawan"));
       if (!mounted) return;
       if (response.statusCode == 200) {
+        var decoded = jsonDecode(response.body);
+        List parsedList = [];
+        if (decoded is List) {
+          parsedList = decoded;
+        } else if (decoded is Map) {
+          var listEntry = decoded.values.firstWhere((val) => val is List, orElse: () => []);
+          parsedList = listEntry is List ? listEntry : [];
+        }
         setState(() {
-          dataList = jsonDecode(response.body);
+          dataList = parsedList;
           isLoading = false;
         });
       }
@@ -549,6 +557,7 @@ class _GuruKaryawanScreenState extends State<GuruKaryawanScreen> {
   @override
   Widget build(BuildContext context) {
     final filteredList = dataList.where((item) {
+      if (item is! Map) return false;
       final id = item['ID']?.toString() ?? '';
       final nama = item['Nama Lengkap']?.toString() ?? '';
       return id != 'SD0' && nama.trim().isNotEmpty;
@@ -627,8 +636,16 @@ class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
       final response = await http.get(Uri.parse("$scriptUrl?action=getData&sheet=RekapAbsen"));
       if (!mounted) return;
       if (response.statusCode == 200) {
+        var decoded = jsonDecode(response.body);
+        List parsedList = [];
+        if (decoded is List) {
+          parsedList = decoded;
+        } else if (decoded is Map) {
+          var listEntry = decoded.values.firstWhere((val) => val is List, orElse: () => []);
+          parsedList = listEntry is List ? listEntry : [];
+        }
         setState(() {
-          dataList = jsonDecode(response.body);
+          dataList = parsedList;
           isLoading = false;
         });
       }
@@ -735,6 +752,12 @@ class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
                         itemBuilder: (context, index) {
                           var item = dataList[index];
                           int nomor = index + 1;
+                          String titleText = "$nomor.";
+                          if (item is Map && item.isNotEmpty) {
+                            titleText = "$nomor. ${item.values.first.toString()}";
+                          } else {
+                            titleText = "$nomor. $item";
+                          }
                           return Card(
                             margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                             child: ListTile(
@@ -742,7 +765,7 @@ class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
                                 backgroundColor: Colors.brown,
                                 child: Text('$nomor', style: const TextStyle(color: Colors.white)),
                               ),
-                              title: Text('$nomor. ${item.values.first.toString()}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              title: Text(titleText, style: const TextStyle(fontWeight: FontWeight.bold)),
                               subtitle: Text(item.toString()),
                             ),
                           );
@@ -781,8 +804,17 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
       if (!mounted) return;
       if (response.statusCode == 200) {
         var decoded = jsonDecode(response.body);
+        
+        List parsedList = [];
+        if (decoded is List) {
+          parsedList = decoded;
+        } else if (decoded is Map) {
+          var listEntry = decoded.values.firstWhere((val) => val is List, orElse: () => []);
+          parsedList = listEntry is List ? listEntry : [];
+        }
+
         setState(() {
-          dataList = decoded is List ? decoded : [];
+          dataList = parsedList;
           isLoading = false;
         });
       } else {

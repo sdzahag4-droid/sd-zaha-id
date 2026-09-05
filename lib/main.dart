@@ -415,14 +415,20 @@ class _AbsenScreenState extends State<AbsenScreen> {
         "foto": fotoData,
       };
 
-      var response = await http.post(Uri.parse(scriptUrl), body: jsonEncode(body));
+      var response = await http.post(
+              Uri.parse(scriptUrl),
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: jsonEncode(body),
+            );
 
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Absen Berhasil Terkirim!')));
-        Navigator.pop(context);
-      } else {
-        throw 'Gagal terhubung ke Google Sheets';
-      }
+            if (response.statusCode == 200 || response.statusCode == 302) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Absen Berhasil Terkirim!')));
+              Navigator.pop(context);
+            } else {
+              throw 'Gagal terhubung ke Google Sheets (Status: ${response.statusCode})';
+            }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: $e')));
     } finally {

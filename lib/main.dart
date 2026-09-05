@@ -91,6 +91,8 @@ class _LoginScreenState extends State<LoginScreen> {
       
       final response = await http.get(encodedUrl);
 
+      if (!mounted) return;
+
       if (response.statusCode == 200 || response.statusCode == 302) {
         final result = jsonDecode(response.body);
 
@@ -119,11 +121,14 @@ class _LoginScreenState extends State<LoginScreen> {
         throw 'Gagal terhubung ke server (Status: ${response.statusCode})';
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('❌ Error: $e')),
       );
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
@@ -398,6 +403,8 @@ class _AbsenScreenState extends State<AbsenScreen> {
         body: jsonEncode(body),
       );
 
+      if (!mounted) return;
+
       if (response.statusCode == 200 || response.statusCode == 302) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Absen Berhasil Terkirim!')));
         Navigator.pop(context);
@@ -405,9 +412,12 @@ class _AbsenScreenState extends State<AbsenScreen> {
         throw 'Gagal terhubung ke Google Sheets (Status: ${response.statusCode})';
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: $e')));
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
@@ -520,6 +530,7 @@ class _GuruKaryawanScreenState extends State<GuruKaryawanScreen> {
   void fetchData() async {
     try {
       final response = await http.get(Uri.parse("$scriptUrl?action=getData&sheet=GuruKaryawan"));
+      if (!mounted) return;
       if (response.statusCode == 200) {
         setState(() {
           dataList = jsonDecode(response.body);
@@ -527,6 +538,7 @@ class _GuruKaryawanScreenState extends State<GuruKaryawanScreen> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => isLoading = false);
     }
   }
@@ -610,6 +622,7 @@ class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
   void fetchData() async {
     try {
       final response = await http.get(Uri.parse("$scriptUrl?action=getData&sheet=RekapAbsen"));
+      if (!mounted) return;
       if (response.statusCode == 200) {
         setState(() {
           dataList = jsonDecode(response.body);
@@ -617,6 +630,7 @@ class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => isLoading = false);
     }
   }
@@ -761,6 +775,7 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
     setState(() => isLoading = true);
     try {
       final response = await http.get(Uri.parse("$scriptUrl?action=getData&sheet=${widget.sheetName}"));
+      if (!mounted) return;
       if (response.statusCode == 200) {
         setState(() {
           dataList = jsonDecode(response.body);
@@ -770,6 +785,7 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
         setState(() => isLoading = false);
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => isLoading = false);
     }
   }
@@ -780,7 +796,7 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: Text('Tambah ${widget.sheetName}'),
           content: SingleChildScrollView(
@@ -809,12 +825,15 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Batal')),
             ElevatedButton(
               onPressed: () async {
                 if (nameController.text.trim().isNotEmpty) {
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
+                  
+                  if (!mounted) return;
                   setState(() => isLoading = true);
+                  
                   try {
                     List<String> valuesToSend = [nameController.text.trim()];
                     if (widget.sheetName == 'Sarana') {
@@ -833,6 +852,9 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
                       headers: {"Content-Type": "application/json"},
                       body: jsonEncode(body),
                     );
+                    
+                    if (!mounted) return;
+                    
                     var result = jsonDecode(response.body);
                     if (result['status'] == 'success') {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Berhasil ditambahkan!')));
@@ -842,6 +864,7 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
                       setState(() => isLoading = false);
                     }
                   } catch (e) {
+                    if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: $e')));
                     setState(() => isLoading = false);
                   }
@@ -858,16 +881,19 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
   void _deleteItem(int rowIndex) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Hapus Data'),
         content: const Text('Apakah Anda yakin ingin menghapus item ini?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Batal')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
+              
+              if (!mounted) return;
               setState(() => isLoading = true);
+              
               try {
                 var body = {
                   "action": "hapusData",
@@ -881,6 +907,9 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
                   headers: {"Content-Type": "application/json"},
                   body: jsonEncode(body),
                 );
+                
+                if (!mounted) return;
+                
                 var result = jsonDecode(response.body);
                 if (result['status'] == 'success') {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🗑️ Berhasil dihapus!')));
@@ -890,6 +919,7 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
                   setState(() => isLoading = false);
                 }
               } catch (e) {
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: $e')));
                 setState(() => isLoading = false);
               }

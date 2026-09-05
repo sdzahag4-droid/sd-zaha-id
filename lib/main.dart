@@ -36,33 +36,8 @@ class LoginData {
   static String username = "";
   static String jabatan = "";
   static String id = "";
+  static String role = "";
   static bool isAdmin = false;
-}
-
-// ✅ PENYIMPANAN LOKAL UNTUK FITUR TAMBAH/HAPUS MANUAL
-class LocalDataStorage {
-  static Map<String, List<String>> items = {
-    'Jadwal Sekolah': [
-      '07.00 - 07.15 : Upacara / Doa Pagi',
-      '07.15 - 12.00 : Kegiatan Belajar Mengajar',
-      '12.00 - 13.00 : Istirahat & Sholat Dzuhur Berjamaah'
-    ],
-    'Sarana Sekolah': [
-      'Ruang Kelas 1 sampai 6',
-      'Laboratorium Komputer',
-      'Perpustakaan Digital Sekolah',
-      'Lapangan Olahraga Utama'
-    ],
-    'Agenda Sekolah': [
-      'Rapat Koordinasi Guru dan Karyawan Bulanan',
-      'Porseni Antar Kelas Semester Ganjil',
-      'Penerimaan Rapor Hasil Belajar Siswa'
-    ],
-    'Informasi Penting': [
-      'Seluruh guru dan karyawan wajib hadir pukul 06.45 WIB.',
-      'Pengumpulan rekap penilaian paling lambat akhir pekan ini.'
-    ],
-  };
 }
 
 const String scriptUrl = "https://script.google.com/macros/s/AKfycbzmwc8kVmf17HjXVn7MFf-85ZxPfZG8x0oc4aI2j64Ym6sphMp2vhnRfrIyoTHokYD5gg/exec";
@@ -116,7 +91,6 @@ class _LoginScreenState extends State<LoginScreen> {
       
       final response = await http.get(encodedUrl);
 
-      // Tangani status 200 atau 302 (redirect Google Apps Script)
       if (response.statusCode == 200 || response.statusCode == 302) {
         final result = jsonDecode(response.body);
 
@@ -125,7 +99,8 @@ class _LoginScreenState extends State<LoginScreen> {
           LoginData.username = result['username'] ?? "";
           LoginData.jabatan = result['jabatan'] ?? "";
           LoginData.id = result['id'] ?? "";
-          LoginData.isAdmin = LoginData.username.toLowerCase() == "admin";
+          LoginData.role = result['role'] ?? "guru";
+          LoginData.isAdmin = LoginData.role.toLowerCase() == "admin";
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('✅ Selamat datang, ${LoginData.nama}!')),
@@ -234,6 +209,7 @@ class HomeScreen extends StatelessWidget {
               LoginData.username = "";
               LoginData.jabatan = "";
               LoginData.id = "";
+              LoginData.role = "";
               LoginData.isAdmin = false;
 
               Navigator.pushReplacement(
@@ -267,19 +243,19 @@ class HomeScreen extends StatelessWidget {
             title: 'Jadwal Sekolah',
             icon: Icons.schedule,
             color: Colors.orange,
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocalCrudScreen(title: 'Jadwal Sekolah'))),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SheetCrudScreen(sheetName: 'Jadwal'))),
           ),
           MenuCard(
             title: 'Sarana Prasarana',
             icon: Icons.inventory,
             color: Colors.purple,
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocalCrudScreen(title: 'Sarana Sekolah'))),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SheetCrudScreen(sheetName: 'Sarana'))),
           ),
           MenuCard(
             title: 'Agenda Sekolah',
             icon: Icons.event,
             color: Colors.red,
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocalCrudScreen(title: 'Agenda Sekolah'))),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SheetCrudScreen(sheetName: 'Agenda'))),
           ),
           MenuCard(
             title: 'Profil Guru & Karyawan',
@@ -303,7 +279,7 @@ class HomeScreen extends StatelessWidget {
             title: 'Informasi Penting',
             icon: Icons.info,
             color: Colors.amber,
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocalCrudScreen(title: 'Informasi Penting'))),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SheetCrudScreen(sheetName: 'Informasi Penting'))),
           ),
         ],
       ),
@@ -414,19 +390,17 @@ class _AbsenScreenState extends State<AbsenScreen> {
       };
 
       var response = await http.post(
-              Uri.parse(scriptUrl),
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: jsonEncode(body),
-            );
+        Uri.parse(scriptUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body),
+      );
 
-            if (response.statusCode == 200 || response.statusCode == 302) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Absen Berhasil Terkirim!')));
-              Navigator.pop(context);
-            } else {
-              throw 'Gagal terhubung ke Google Sheets (Status: ${response.statusCode})';
-            }
+      if (response.statusCode == 200 || response.statusCode == 302) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Absen Berhasil Terkirim!')));
+        Navigator.pop(context);
+      } else {
+        throw 'Gagal terhubung ke Google Sheets (Status: ${response.statusCode})';
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: $e')));
     } finally {
@@ -522,7 +496,7 @@ class _AbsenScreenState extends State<AbsenScreen> {
   }
 }
 
-// ==================== REVISI 1: PROFIL GURU & KARYAWAN (BERSIH & NOMOR URUT) ====================
+// ==================== PROFIL GURU & KARYAWAN ====================
 class GuruKaryawanScreen extends StatefulWidget {
   const GuruKaryawanScreen({super.key});
 
@@ -556,7 +530,6 @@ class _GuruKaryawanScreenState extends State<GuruKaryawanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Saring baris kosong dan ID == 'SD0'
     final filteredList = dataList.where((item) {
       final id = item['ID']?.toString() ?? '';
       final nama = item['Nama Lengkap']?.toString() ?? '';
@@ -597,7 +570,7 @@ class _GuruKaryawanScreenState extends State<GuruKaryawanScreen> {
   }
 }
 
-// ==================== REVISI 3: REKAP ABSEN (BULANAN + EKSPOR PDF) ====================
+// ==================== REKAP ABSEN ====================
 class RekapAbsenScreen extends StatefulWidget {
   const RekapAbsenScreen({super.key});
 
@@ -672,9 +645,7 @@ class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
       ),
     );
 
-    await Printing.layoutPdf(
-      onLayout: (format) async => pdf.save(),
-    );
+    await Printing.layoutPdf(onLayout: (format) async => pdf.save());
   }
 
   @override
@@ -764,23 +735,40 @@ class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
   }
 }
 
-// ==================== REVISI 5: FITUR TAMBAH & HAPUS MANUAL (LOKAL) ====================
-class LocalCrudScreen extends StatefulWidget {
-  final String title;
-  const LocalCrudScreen({super.key, required this.title});
+// ==================== PENGELOLAAN DATA SHEET (AGENDA, SARANA, JADWAL, DLL) ====================
+class SheetCrudScreen extends StatefulWidget {
+  final String sheetName;
+  const SheetCrudScreen({super.key, required this.sheetName});
 
   @override
-  State<LocalCrudScreen> createState() => _LocalCrudScreenState();
+  State<SheetCrudScreen> createState() => _SheetCrudScreenState();
 }
 
-class _LocalCrudScreenState extends State<LocalCrudScreen> {
-  late List<String> currentList;
+class _SheetCrudScreenState extends State<SheetCrudScreen> {
+  List dataList = [];
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    LocalDataStorage.items.putIfAbsent(widget.title, () => []);
-    currentList = LocalDataStorage.items[widget.title]!;
+    fetchData();
+  }
+
+  void fetchData() async {
+    setState(() => isLoading = true);
+    try {
+      final response = await http.get(Uri.parse("$scriptUrl?action=getData&sheet=${widget.sheetName}"));
+      if (response.statusCode == 200) {
+        setState(() {
+          dataList = jsonDecode(response.body);
+          isLoading = false;
+        });
+      } else {
+        setState(() => isLoading = false);
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+    }
   }
 
   void _addItem() {
@@ -789,7 +777,7 @@ class _LocalCrudScreenState extends State<LocalCrudScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Tambah ${widget.title}'),
+          title: Text('Tambah ${widget.sheetName}'),
           content: TextField(
             controller: controller,
             decoration: const InputDecoration(hintText: 'Masukkan data baru...', border: OutlineInputBorder()),
@@ -798,13 +786,35 @@ class _LocalCrudScreenState extends State<LocalCrudScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (controller.text.trim().isNotEmpty) {
-                  setState(() {
-                    currentList.add(controller.text.trim());
-                  });
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Berhasil ditambahkan!')));
+                  setState(() => isLoading = true);
+                  try {
+                    var body = {
+                      "action": "tambahData",
+                      "sheet": widget.sheetName,
+                      "values": [controller.text.trim()],
+                      "username": LoginData.username,
+                      "role": LoginData.role,
+                    };
+                    var response = await http.post(
+                      Uri.parse(scriptUrl),
+                      headers: {"Content-Type": "application/json"},
+                      body: jsonEncode(body),
+                    );
+                    var result = jsonDecode(response.body);
+                    if (result['status'] == 'success') {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Berhasil ditambahkan!')));
+                      fetchData();
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('⚠️ ${result['message']}')));
+                      setState(() => isLoading = false);
+                    }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: $e')));
+                    setState(() => isLoading = false);
+                  }
                 }
               },
               child: const Text('Simpan'),
@@ -815,7 +825,7 @@ class _LocalCrudScreenState extends State<LocalCrudScreen> {
     );
   }
 
-  void _deleteItem(int index) {
+  void _deleteItem(int rowIndex) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -825,12 +835,34 @@ class _LocalCrudScreenState extends State<LocalCrudScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            onPressed: () {
-              setState(() {
-                currentList.removeAt(index);
-              });
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🗑️ Berhasil dihapus!')));
+              setState(() => isLoading = true);
+              try {
+                var body = {
+                  "action": "hapusData",
+                  "sheet": widget.sheetName,
+                  "row": rowIndex, // Indeks baris di spreadsheet (baris ke-index + 2 karena header di baris 1)
+                  "username": LoginData.username,
+                  "role": LoginData.role,
+                };
+                var response = await http.post(
+                  Uri.parse(scriptUrl),
+                  headers: {"Content-Type": "application/json"},
+                  body: jsonEncode(body),
+                );
+                var result = jsonDecode(response.body);
+                if (result['status'] == 'success') {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🗑️ Berhasil dihapus!')));
+                  fetchData();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('⚠️ ${result['message']}')));
+                  setState(() => isLoading = false);
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: $e')));
+                setState(() => isLoading = false);
+              }
             },
             child: const Text('Hapus'),
           ),
@@ -842,41 +874,54 @@ class _LocalCrudScreenState extends State<LocalCrudScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
-      body: currentList.isEmpty
-          ? Center(child: Text('Belum ada data ${widget.title}. Ketuk tombol tambah di bawah.'))
-          : ListView.builder(
-              itemCount: currentList.length,
-              itemBuilder: (context, index) {
-                int nomor = index + 1;
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.green[700],
-                      child: Text('$nomor', style: const TextStyle(color: Colors.white)),
-                    ),
-                    title: Text('$nomor. ${currentList[index]}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _deleteItem(index),
-                    ),
-                  ),
-                );
-              },
-            ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addItem,
-        icon: const Icon(Icons.add),
-        label: Text('Tambah ${widget.title}'),
-        backgroundColor: Colors.green[700],
-        foregroundColor: Colors.white,
-      ),
+      appBar: AppBar(title: Text(widget.sheetName)),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : dataList.isEmpty
+              ? Center(child: Text('Belum ada data ${widget.sheetName}.'))
+              : ListView.builder(
+                  itemCount: dataList.length,
+                  itemBuilder: (context, index) {
+                    int nomor = index + 1;
+                    var item = dataList[index];
+                    String displayValue = item is Map && item.isNotEmpty 
+                        ? item.values.first.toString() 
+                        : item.toString();
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Colors.green[700],
+                          child: Text('$nomor', style: const TextStyle(color: Colors.white)),
+                        ),
+                        title: Text('$nomor. $displayValue', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        // Tombol hapus HANYA muncul jika user adalah admin
+                        trailing: LoginData.isAdmin
+                            ? IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => _deleteItem(index + 2), // index + 2 mengarah ke baris asli Spreadsheet
+                              )
+                            : null,
+                      ),
+                    );
+                  },
+                ),
+      // Tombol tambah HANYA muncul jika user adalah admin
+      floatingActionButton: LoginData.isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: _addItem,
+              icon: const Icon(Icons.add),
+              label: Text('Tambah ${widget.sheetName}'),
+              backgroundColor: Colors.green[700],
+              foregroundColor: Colors.white,
+            )
+          : null,
     );
   }
 }
 
-// ==================== REVISI 4: CHAT ADMIN ====================
+// ==================== CHAT ADMIN ====================
 class ChatAdminScreen extends StatelessWidget {
   const ChatAdminScreen({super.key});
   @override
@@ -904,7 +949,7 @@ class ChatAdminScreen extends StatelessWidget {
   }
 }
 
-// ==================== REVISI 2: SOSIAL MEDIA SEKOLAH LENGKAP ====================
+// ==================== SOSIAL MEDIA SEKOLAH ====================
 class SosmedScreen extends StatelessWidget {
   const SosmedScreen({super.key});
   @override

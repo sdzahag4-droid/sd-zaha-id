@@ -6,7 +6,7 @@ allprojects {
 }
 
 plugins {
-    id("org.jetbrains.kotlin.android")  apply false
+    id("org.jetbrains.kotlin.android") apply false
 }
 
 val newBuildDir: Directory =
@@ -24,13 +24,20 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// Tambahkan blok ini di bagian bawah untuk menyamakan SDK plugin pihak ketiga ke SDK 36
+// Blok pemaksaan SDK menggunakan Kotlin DSL yang kompatibel dengan AGP 9+
 subprojects {
-    afterEvaluate { project ->
-        if (project.hasProperty("android")) {
-            project.extensions.configure<com.android.build.gradle.BaseExtension> {
-                if (compileSdkVersion == null || compileSdkVersion < 36) {
-                    compileSdkVersion(36)
+    afterEvaluate { p ->
+        p.plugins.withId("com.android.application") {
+            p.extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
+                if (compileSdk < 36) {
+                    compileSdk = 36
+                }
+            }
+        }
+        p.plugins.withId("com.android.library") {
+            p.extensions.configure<com.android.build.api.dsl.LibraryExtension> {
+                if (compileSdk < 36) {
+                    compileSdk = 36
                 }
             }
         }

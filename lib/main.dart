@@ -376,7 +376,11 @@ class _AbsenScreenState extends State<AbsenScreen> {
           source: ImageSource.camera,
           preferredCameraDevice: useBackCamera ? CameraDevice.rear : CameraDevice.front,
         );
-        if (image != null) fotoData = image.path;
+        if (image != null) {
+          // ✅ Ubah file gambar ke Base64 agar bisa diunggah ke Google Drive melalui Apps Script
+          final bytes = await image.readAsBytes();
+          fotoData = "data:image/jpeg;base64," + base64Encode(bytes);
+        }
       }
 
       var body = {

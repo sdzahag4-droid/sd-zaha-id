@@ -112,6 +112,9 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final response = await http.post(
         Uri.parse(scriptUrl),
+        headers: {
+          "Content-Type": "application/json", // 👈 Pastikan baris ini ada
+        },
         body: jsonEncode({
           "action": "login",
           "username": usernameController.text.trim(),
@@ -119,7 +122,8 @@ class _LoginScreenState extends State<LoginScreen> {
         }),
       );
 
-      if (response.statusCode == 200) {
+      // Tangani status 200 atau 302 (redirect Google Apps Script)
+      if (response.statusCode == 200 || response.statusCode == 302) {
         final result = jsonDecode(response.body);
 
         if (result['status'] == 'success') {

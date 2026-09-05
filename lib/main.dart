@@ -780,8 +780,9 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
       final response = await http.get(Uri.parse("$scriptUrl?action=getData&sheet=${widget.sheetName}"));
       if (!mounted) return;
       if (response.statusCode == 200) {
+        var decoded = jsonDecode(response.body);
         setState(() {
-          dataList = jsonDecode(response.body);
+          dataList = decoded is List ? decoded : [];
           isLoading = false;
         });
       } else {
@@ -793,7 +794,7 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
     }
   }
 
-  // ✅ Fungsi Pilih & Unggah Excel (Disesuaikan dengan Panduan Gambar)
+  // ✅ Fungsi Pilih & Unggah Excel
   Future<void> uploadExcel() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -854,7 +855,7 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
         var resJson = jsonDecode(response.body);
         if (resJson['status'] == 'success') {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Data Excel Berhasil Diunggah!')));
-          fetchData();
+          fetchData(); // Refresh data secara otomatis
         } else {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('⚠️ ${resJson['message']}')));
           setState(() => isLoading = false);
@@ -1040,14 +1041,13 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
                     String displayValue = "";
                     String subtitleValue = "";
 
-                    if (widget.sheetName == 'Sarana' && item is Map) {
-                      var values = item.values.toList();
-                      displayValue = values.isNotEmpty ? values[0].toString() : '';
-                      subtitleValue = values.length > 1 ? "Kondisi: ${values[1]}" : "Kondisi: -";
+                    if (item is Map) {
+                      var entries = item.entries.toList();
+                      if (entries.isNotEmpty) {
+                        displayValue = entries.map((e) => "${e.key}: ${e.value}").join(" | ");
+                      }
                     } else {
-                      displayValue = item is Map && item.isNotEmpty 
-                          ? item.values.first.toString() 
-                          : item.toString();
+                      displayValue = item.toString();
                     }
 
                     return Card(
@@ -1057,7 +1057,7 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
                           backgroundColor: Colors.green[700],
                           child: Text('$nomor', style: const TextStyle(color: Colors.white)),
                         ),
-                        title: Text('$nomor. $displayValue', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        title: Text('$nomor. $displayValue', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                         subtitle: subtitleValue.isNotEmpty ? Text(subtitleValue) : null,
                         trailing: LoginData.isAdmin
                             ? IconButton(
@@ -1153,7 +1153,7 @@ class SosmedScreen extends StatelessWidget {
             leading: const Icon(Icons.message, color: Colors.green),
             title: const Text('Channel WhatsApp SD ZAHA.ID'),
             subtitle: const Text('https://whatsapp.com/channel/0029VbAhEFdCcW4vU6pekE1T'),
-            onTap: () => launchUrl(Uri.parse("https://whatsapp.com/channel/0029VbAhEFdGCW4vU6pekE1T"), mode: LaunchMode.externalApplication),
+            onTap: () => launchUrl(Uri.parse("https://whatsapp.com/channel/0029VbAhEFdCcW4vU6pekE1T"), mode: LaunchMode.externalApplication),
           ),
         ],
       ),

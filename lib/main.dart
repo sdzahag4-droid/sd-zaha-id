@@ -658,7 +658,6 @@ class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
   void exportPdf() async {
     final pdf = pw.Document();
     
-    // Memetakan data agar tersusun menjadi kolom terpisah persis seperti di Google Sheets
     List<List<String>> tableData = [];
     for (int i = 0; i < dataList.length; i++) {
       var item = dataList[i];
@@ -672,7 +671,6 @@ class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
       String total = "0";
 
       if (item is Map) {
-        // Mengambil kunci nilai berdasarkan header dari sheet RekapAbsen
         var keys = item.keys.toList();
         if (keys.isNotEmpty) nama = item[keys[0]]?.toString() ?? "";
         if (keys.length > 1) hadir = item[keys[1]]?.toString() ?? "0";
@@ -713,20 +711,22 @@ class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
               pw.Table.fromTextArray(
                 headers: ['No', 'Nama Lengkap', 'Hadir', 'Sakit', 'Izin', 'Terlambat', 'Cuti', 'Tidak Masuk', 'Total'],
                 data: tableData,
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
+                // ✅ Ukuran font header disesuaikan agar muat dengan rapi
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
                 cellStyle: const pw.TextStyle(fontSize: 9),
                 headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
                 cellAlignment: pw.Alignment.centerLeft,
+                // ✅ Lebar kolom diperlebar agar teks judul kolom tidak terpotong ke bawah
                 columnWidths: {
-                  0: const pw.FixedColumnWidth(25),
-                  1: const pw.FlexColumnWidth(3),
-                  2: const pw.FixedColumnWidth(30),
-                  3: const pw.FixedColumnWidth(30),
-                  4: const pw.FixedColumnWidth(30),
-                  5: const pw.FixedColumnWidth(40),
-                  6: const pw.FixedColumnWidth(30),
-                  7: const pw.FixedColumnWidth(45),
-                  8: const pw.FixedColumnWidth(30),
+                  0: const pw.FixedColumnWidth(22),  // No
+                  1: const pw.FlexColumnWidth(2.8),   // Nama Lengkap
+                  2: const pw.FixedColumnWidth(35),  // Hadir
+                  3: const pw.FixedColumnWidth(35),  // Sakit
+                  4: const pw.FixedColumnWidth(35),  // Izin
+                  5: const pw.FixedColumnWidth(48),  // Terlambat
+                  6: const pw.FixedColumnWidth(35),  // Cuti
+                  7: const pw.FixedColumnWidth(50),  // Tidak Masuk
+                  8: const pw.FixedColumnWidth(35),  // Total
                 },
               ),
             ],
@@ -879,7 +879,6 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
     }
   }
 
-  // ✅ Fungsi Pilih & Unggah Excel
   Future<void> uploadExcel() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -940,7 +939,7 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
         var resJson = jsonDecode(response.body);
         if (resJson['status'] == 'success') {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Data Excel Berhasil Diunggah!')));
-          fetchData(); // Refresh data secara otomatis
+          fetchData();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('⚠️ ${resJson['message']}')));
           setState(() => isLoading = false);

@@ -1002,53 +1002,53 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Batal')),
-            if (widget.sheetName != 'Jadwal')
-              ElevatedButton(
-                onPressed: () async {
-                  if (nameController.text.trim().isNotEmpty) {
-                    Navigator.pop(dialogContext);
+            // Tombol Simpan diaktifkan untuk semua jenis sheet (termasuk Jadwal)
+            ElevatedButton(
+              onPressed: () async {
+                if (nameController.text.trim().isNotEmpty) {
+                  Navigator.pop(dialogContext);
+                  
+                  if (!mounted) return;
+                  setState(() => isLoading = true);
+                  
+                  try {
+                    List<String> valuesToSend = [nameController.text.trim()];
+                    if (widget.sheetName == 'Sarana') {
+                      valuesToSend.add(conditionController.text.trim().isNotEmpty ? conditionController.text.trim() : 'Baik');
+                    }
+
+                    var body = {
+                      "action": "tambahData",
+                      "sheet": widget.sheetName,
+                      "values": valuesToSend,
+                      "username": LoginData.username,
+                      "role": LoginData.role,
+                    };
+                    var response = await http.post(
+                      Uri.parse(scriptUrl),
+                      headers: {"Content-Type": "application/json"},
+                      body: jsonEncode(body),
+                    );
                     
                     if (!mounted) return;
-                    setState(() => isLoading = true);
                     
-                    try {
-                      List<String> valuesToSend = [nameController.text.trim()];
-                      if (widget.sheetName == 'Sarana') {
-                        valuesToSend.add(conditionController.text.trim().isNotEmpty ? conditionController.text.trim() : 'Baik');
-                      }
-
-                      var body = {
-                        "action": "tambahData",
-                        "sheet": widget.sheetName,
-                        "values": valuesToSend,
-                        "username": LoginData.username,
-                        "role": LoginData.role,
-                      };
-                      var response = await http.post(
-                        Uri.parse(scriptUrl),
-                        headers: {"Content-Type": "application/json"},
-                        body: jsonEncode(body),
-                      );
-                      
-                      if (!mounted) return;
-                      
-                      var result = jsonDecode(response.body);
-                      if (result['status'] == 'success') {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Berhasil ditambahkan!')));
-                        fetchData();
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('⚠️ ${result['message']}')));
-                        setState(() => isLoading = false);
-                      }
-                    } catch (e) {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: $e')));
+                    var result = jsonDecode(response.body);
+                    if (result['status'] == 'success') {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Berhasil ditambahkan!')));
+                      fetchData();
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('⚠️ ${result['message']}')));
                       setState(() => isLoading = false);
                     }
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: $e')));
+                    setState(() => isLoading = false);
                   }
-                },
-                child: const Text('Simpan'),
-              ),
+                }
+              },
+              child: const Text('Simpan'),
+            ),
           ],
         );
       },

@@ -348,7 +348,7 @@ class _AbsenScreenState extends State<AbsenScreen> {
     nameController = TextEditingController(text: LoginData.nama);
   }
 
-  void submitAbsen(String status, {bool needGps = false, bool needCamera = false, bool useBackCamera = false}) async {
+  void submitAbsen(String status, {bool needGps = false, bool needCamera = false}) async {
     if (nameController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('⚠️ Data login tidak ditemukan. Silakan login ulang!')),
@@ -384,7 +384,7 @@ class _AbsenScreenState extends State<AbsenScreen> {
         final ImagePicker picker = ImagePicker();
         final XFile? image = await picker.pickImage(
           source: ImageSource.camera,
-          preferredCameraDevice: useBackCamera ? CameraDevice.rear : CameraDevice.front,
+          preferredCameraDevice: CameraDevice.front, // Diatur permanen menggunakan kamera depan/selfie
         );
         if (image != null) {
           final bytes = await image.readAsBytes();
@@ -460,7 +460,7 @@ class _AbsenScreenState extends State<AbsenScreen> {
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
                     onPressed: (currentTimeMinutes >= 345 && currentTimeMinutes <= 450)
-                        ? () => submitAbsen('Absen Masuk', needGps: true, needCamera: true, useBackCamera: false)
+                        ? () => submitAbsen('Absen Masuk', needGps: true, needCamera: true)
                         : null,
                     icon: const Icon(Icons.login),
                     label: const Text('Absen Masuk (05.45 - 07.30 WIB) [GPS + Selfie]'),
@@ -483,15 +483,15 @@ class _AbsenScreenState extends State<AbsenScreen> {
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton.icon(
-                    onPressed: () => submitAbsen('Absen Sakit', needCamera: true, useBackCamera: true),
+                    onPressed: () => submitAbsen('Absen Sakit', needCamera: true),
                     icon: const Icon(Icons.sick),
-                    label: const Text('Absen Sakit (Bebas Jam + Kamera Belakang)'),
+                    label: const Text('Absen Sakit (Bebas Jam + Selfie)'),
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton.icon(
-                    onPressed: () => submitAbsen('Absen Cuti', needCamera: true, useBackCamera: true),
+                    onPressed: () => submitAbsen('Absen Cuti', needCamera: true),
                     icon: const Icon(Icons.beach_access),
-                    label: const Text('Absen Cuti (Bebas Jam + Kamera Belakang)'),
+                    label: const Text('Absen Cuti (Bebas Jam + Selfie)'),
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton.icon(
@@ -502,7 +502,7 @@ class _AbsenScreenState extends State<AbsenScreen> {
                   const SizedBox(height: 10),
                   ElevatedButton.icon(
                     onPressed: (currentTimeMinutes >= 600 && currentTimeMinutes <= 840)
-                        ? () => submitAbsen('Absen Pulang', needGps: true, needCamera: true, useBackCamera: false)
+                        ? () => submitAbsen('Absen Pulang', needGps: true, needCamera: true)
                         : null,
                     icon: const Icon(Icons.logout),
                     label: const Text('Absen Pulang (10.00 - 14.00 WIB) [GPS + Selfie]'),
@@ -759,7 +759,7 @@ class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Rekap Absen Guru dan Karyawan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text('Rekap Absen Guru dan Karyawan', style: TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold) as TextStyle),
                 const Text('SD Zainul Hasan Genggong', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 10),
                 Row(

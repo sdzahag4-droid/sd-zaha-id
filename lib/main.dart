@@ -43,7 +43,7 @@ class LoginData {
   static bool isAdmin = false;
 }
 
-const String scriptUrl = "https://script.google.com/macros/s/AKfycbzmwc8kVmf17HjXVn7MFf-85ZxPfZG8x0oc4aI2j64Ym6sphMp2vhnRfrIyoTHokYD5gg/exec";
+const String scriptUrl = "https://script.google.com/macros/s/AKfycbyAL4tTzcINBLnd38mnhuQJMxuT0TOFpEuVpJkO4gV4_Yg5HQhlAOuOJVGIJH2baA/exec";
 
 void main() {
   runApp(const MyApp());

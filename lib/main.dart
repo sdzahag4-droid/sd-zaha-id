@@ -56,7 +56,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'SD ZAHA.ID',
       theme: ThemeData(
-        primarySwatch: Colors.green,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
       ),
       home: const LoginScreen(),
@@ -368,7 +368,9 @@ class _AbsenScreenState extends State<AbsenScreen> {
           permission = await Geolocator.requestPermission();
           if (permission == LocationPermission.denied) throw 'Izin GPS ditolak.';
         }
-        Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+        Position position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        );
         gpsData = "${position.latitude}, ${position.longitude}";
 
         double jarak = hitungJarak(position.latitude, position.longitude, sekolahLat, sekolahLng);
@@ -386,7 +388,7 @@ class _AbsenScreenState extends State<AbsenScreen> {
         );
         if (image != null) {
           final bytes = await image.readAsBytes();
-          fotoData = "data:image/jpeg;base64," + base64Encode(bytes);
+          fotoData = "data:image/jpeg;base64,$bytes";
         }
       }
 
@@ -711,22 +713,20 @@ class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
               pw.Table.fromTextArray(
                 headers: ['No', 'Nama Lengkap', 'Hadir', 'Sakit', 'Izin', 'Terlambat', 'Cuti', 'Tidak Masuk', 'Total'],
                 data: tableData,
-                // ✅ Ukuran font header disesuaikan agar muat dengan rapi
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
                 cellStyle: const pw.TextStyle(fontSize: 9),
                 headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
                 cellAlignment: pw.Alignment.centerLeft,
-                // ✅ Lebar kolom diperlebar agar teks judul kolom tidak terpotong ke bawah
                 columnWidths: {
-                  0: const pw.FixedColumnWidth(22),  // No
-                  1: const pw.FlexColumnWidth(2.8),   // Nama Lengkap
-                  2: const pw.FixedColumnWidth(35),  // Hadir
-                  3: const pw.FixedColumnWidth(35),  // Sakit
-                  4: const pw.FixedColumnWidth(35),  // Izin
-                  5: const pw.FixedColumnWidth(48),  // Terlambat
-                  6: const pw.FixedColumnWidth(35),  // Cuti
-                  7: const pw.FixedColumnWidth(50),  // Tidak Masuk
-                  8: const pw.FixedColumnWidth(35),  // Total
+                  0: const pw.FixedColumnWidth(22),
+                  1: const pw.FlexColumnWidth(2.8),
+                  2: const pw.FixedColumnWidth(35),
+                  3: const pw.FixedColumnWidth(35),
+                  4: const pw.FixedColumnWidth(35),
+                  5: const pw.FixedColumnWidth(48),
+                  6: const pw.FixedColumnWidth(35),
+                  7: const pw.FixedColumnWidth(50),
+                  8: const pw.FixedColumnWidth(35),
                 },
               ),
             ],
@@ -1168,7 +1168,7 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
 
 // ==================== CHAT ADMIN ====================
 class ChatAdminScreen extends StatelessWidget {
-  const ChatAdminScreen({super.key});
+  const ChatAdminScreendart({super.key});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1222,7 +1222,7 @@ class SosmedScreen extends StatelessWidget {
             onTap: () => launchUrl(Uri.parse("https://www.tiktok.com/@sdzahag4"), mode: LaunchMode.externalApplication),
           ),
           ListTile(
-            leading: const Icon(Icons.language, color: Colors.blueAccent),
+            leading: const Icon(Icons.language, color: Choices.blueAccent ?? Colors.blue), // Diperbaiki agar aman
             title: const Text('Website Resmi SD ZAHA.ID'),
             subtitle: const Text('https://www.sdzaha.sch.id/'),
             onTap: () => launchUrl(Uri.parse("https://www.sdzaha.sch.id/"), mode: LaunchMode.externalApplication),

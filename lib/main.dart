@@ -388,7 +388,7 @@ class _AbsenScreenState extends State<AbsenScreen> {
         );
         if (image != null) {
           final bytes = await image.readAsBytes();
-          fotoData = "data:image/jpeg;base64,$bytes";
+          fotoData = "data:image/jpeg;base64,${base64Encode(bytes)}";
         }
       }
 

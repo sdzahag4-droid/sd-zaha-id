@@ -27,6 +27,18 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Tambahkan baris repositori lokal SDK Flutter di bawah ini:
+        maven {
+            val flutterSdkPath = run {
+                val properties = java.util.Properties()
+                file("local.properties").inputStream().use { properties.load(it) }
+                properties.getProperty("flutter.sdk")
+            }
+            url = uri("$flutterSdkPath/bin/cache/artifacts/engine-maven")
+        }
+        maven {
+            url = uri("https://storage.googleapis.com/download.flutter.io")
+        }
     }
 }
 

@@ -23,11 +23,10 @@ plugins {
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
     repositories {
         google()
         mavenCentral()
-        // Tambahkan baris repositori lokal SDK Flutter di bawah ini:
         maven {
             val flutterSdkPath = run {
                 val properties = java.util.Properties()

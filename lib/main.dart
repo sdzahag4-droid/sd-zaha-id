@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:math'; // ✅ Untuk fungsi hitung jarak
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
@@ -1168,7 +1168,7 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
 
 // ==================== CHAT ADMIN ====================
 class ChatAdminScreen extends StatelessWidget {
-  const ChatAdminScreendart({super.key});
+  const ChatAdminScreen({super.key});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1222,7 +1222,7 @@ class SosmedScreen extends StatelessWidget {
             onTap: () => launchUrl(Uri.parse("https://www.tiktok.com/@sdzahag4"), mode: LaunchMode.externalApplication),
           ),
           ListTile(
-            leading: const Icon(Icons.language, color: Choices.blueAccent ?? Colors.blue), // Diperbaiki agar aman
+            leading: const Icon(Icons.language, color: Colors.blueAccent),
             title: const Text('Website Resmi SD ZAHA.ID'),
             subtitle: const Text('https://www.sdzaha.sch.id/'),
             onTap: () => launchUrl(Uri.parse("https://www.sdzaha.sch.id/"), mode: LaunchMode.externalApplication),

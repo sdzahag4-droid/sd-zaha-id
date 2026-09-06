@@ -962,48 +962,58 @@ class _SheetCrudScreenState extends State<SheetCrudScreen> {
         return AlertDialog(
           title: Text('Tambah ${widget.sheetName}'),
           content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.sheetName == 'Jadwal') ...[
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-                    onPressed: () {
-                      Navigator.pop(dialogContext);
-                      uploadExcel();
-                    },
-                    icon: const Icon(Icons.file_upload),
-                    label: const Text('Pilih & Unggah Excel Jadwal'),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text('Atau input manual di bawah:', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 8),
-                ],
-                TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    labelText: widget.sheetName == 'Sarana' ? 'Nama Sarana' : 'Masukkan data baru...', 
-                    border: const OutlineInputBorder()
-                  ),
-                  maxLines: 2,
-                ),
-                if (widget.sheetName == 'Sarana') ...[
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: conditionController,
-                    decoration: const InputDecoration(
-                      labelText: 'Kondisi Barang (Contoh: Baik / Rusak)', 
-                      border: OutlineInputBorder()
+            child: SizedBox(
+              width: 300,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (widget.sheetName == 'Jadwal') ...[
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        uploadExcel();
+                      },
+                      icon: const Icon(Icons.file_upload),
+                      label: const Text('Pilih & Unggah Excel Jadwal'),
                     ),
+                    const SizedBox(height: 12),
+                    const Text('Atau input manual di bawah:', style: TextStyle(fontSize: 12, color: Colors.grey), textAlign: TextAlign.center),
+                    const SizedBox(height: 8),
+                  ],
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      labelText: widget.sheetName == 'Sarana' ? 'Nama Sarana' : 'Masukkan data baru...', 
+                      border: const OutlineInputBorder()
+                    ),
+                    maxLines: 2,
                   ),
+                  if (widget.sheetName == 'Sarana') ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: conditionController,
+                      decoration: const InputDecoration(
+                        labelText: 'Kondisi Barang (Contoh: Baik / Rusak)', 
+                        border: OutlineInputBorder()
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Batal')),
-            // Tombol Simpan diaktifkan untuk semua jenis sheet (termasuk Jadwal)
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext), 
+              child: const Text('Batal')
+            ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[700],
+                foregroundColor: Colors.white,
+              ),
               onPressed: () async {
                 if (nameController.text.trim().isNotEmpty) {
                   Navigator.pop(dialogContext);

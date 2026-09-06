@@ -759,7 +759,7 @@ class _RekapAbsenScreenState extends State<RekapAbsenScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Rekap Absen Guru dan Karyawan', style: TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold) as TextStyle),
+                const Text('Rekap Absen Guru dan Karyawan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const Text('SD Zainul Hasan Genggong', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 10),
                 Row(
